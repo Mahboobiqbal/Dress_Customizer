@@ -15,7 +15,7 @@ export default function Landing() {
         trainLength: 80,
         texture: "satin",
         textureIntensity: 50,
-        skirtVolume: 75,
+        skirtVolume: 80,
       },
     },
     {
