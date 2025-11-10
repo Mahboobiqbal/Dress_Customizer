@@ -309,26 +309,89 @@ def update_current_profile():
         
         # Update or create body profile
         body_profile = BodyProfile.query.filter_by(account_id=account_id).first()
-        
+
         if 'body_profile' in data:
             body_data = data['body_profile']
-            
+
             if not body_profile:
                 body_profile = BodyProfile(account_id=account_id)
                 db.session.add(body_profile)
-            
+
+            # Basic avatar proportions
             if 'height' in body_data:
                 body_profile.height = float(body_data['height'])
-            
+
             if 'width' in body_data:
                 body_profile.width = float(body_data['width'])
-            
+
             if 'build' in body_data:
                 body_profile.build = float(body_data['build'])
-            
+
             if 'head' in body_data:
                 body_profile.head = float(body_data['head'])
-            
+
+            # Personal information
+            if 'gender' in body_data:
+                body_profile.gender = body_data['gender']
+
+            if 'age' in body_data:
+                body_profile.age = int(body_data['age']) if body_data['age'] else None
+
+            if 'weight' in body_data:
+                body_profile.weight = float(body_data['weight']) if body_data['weight'] else None
+
+            # Body measurements
+            if 'chest' in body_data:
+                body_profile.chest = float(body_data['chest']) if body_data['chest'] else None
+
+            if 'waist' in body_data:
+                body_profile.waist = float(body_data['waist']) if body_data['waist'] else None
+
+            if 'hips' in body_data:
+                body_profile.hips = float(body_data['hips']) if body_data['hips'] else None
+
+            if 'shoulder_width' in body_data:
+                body_profile.shoulder_width = float(body_data['shoulder_width']) if body_data['shoulder_width'] else None
+
+            if 'arm_length' in body_data:
+                body_profile.arm_length = float(body_data['arm_length']) if body_data['arm_length'] else None
+
+            if 'inseam' in body_data:
+                body_profile.inseam = float(body_data['inseam']) if body_data['inseam'] else None
+
+            if 'thigh' in body_data:
+                body_profile.thigh = float(body_data['thigh']) if body_data['thigh'] else None
+
+            if 'neck' in body_data:
+                body_profile.neck = float(body_data['neck']) if body_data['neck'] else None
+
+            if 'calf' in body_data:
+                body_profile.calf = float(body_data['calf']) if body_data['calf'] else None
+
+            if 'wrist' in body_data:
+                body_profile.wrist = float(body_data['wrist']) if body_data['wrist'] else None
+
+            # Preferences (JSON fields)
+            import json
+            if 'patterns' in body_data:
+                body_profile.patterns = json.dumps(body_data['patterns']) if body_data['patterns'] else json.dumps([])
+
+            if 'necklines' in body_data:
+                body_profile.necklines = json.dumps(body_data['necklines']) if body_data['necklines'] else json.dumps([])
+
+            if 'sleeves' in body_data:
+                body_profile.sleeves = json.dumps(body_data['sleeves']) if body_data['sleeves'] else json.dumps([])
+
+            if 'top_styles' in body_data:
+                body_profile.top_styles = json.dumps(body_data['top_styles']) if body_data['top_styles'] else json.dumps([])
+
+            if 'fabric_textures' in body_data:
+                body_profile.fabric_textures = json.dumps(body_data['fabric_textures']) if body_data['fabric_textures'] else json.dumps([])
+
+            if 'fabric_types' in body_data:
+                body_profile.fabric_types = json.dumps(body_data['fabric_types']) if body_data['fabric_types'] else json.dumps({})
+
+            # Measurement unit
             if 'measurement_unit' in body_data:
                 valid_units = ['cm', 'inches']
                 if body_data['measurement_unit'] not in valid_units:
@@ -337,7 +400,7 @@ def update_current_profile():
                         'error': f'Invalid measurement_unit. Must be one of: {valid_units}'
                     }), 400
                 body_profile.measurement_unit = body_data['measurement_unit']
-            
+
             body_profile.updated_at = datetime.utcnow()
         
         db.session.commit()

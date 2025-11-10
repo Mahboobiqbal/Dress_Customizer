@@ -44,18 +44,47 @@ class Account(db.Model):
 class BodyProfile(db.Model):
     """BodyProfile model for body measurements and customization."""
     __tablename__ = 'body_profiles'
-    
+
     id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     account_id = db.Column(db.String(36), db.ForeignKey('accounts.id'), nullable=False, unique=True)
+
+    # Basic avatar proportions
     height = db.Column(db.Float, nullable=False, default=100)
     width = db.Column(db.Float, nullable=False, default=100)
     build = db.Column(db.Float, nullable=False, default=0)
     head = db.Column(db.Float, nullable=False, default=100)
+
+    # Personal info
+    gender = db.Column(db.String(20), nullable=True)  # 'male', 'female', 'other'
+    age = db.Column(db.Integer, nullable=True)
+    weight = db.Column(db.Float, nullable=True)  # in kg
+
+    # Detailed measurements (in cm or inches based on measurement_unit)
+    chest = db.Column(db.Float, nullable=True)  # chest/bust
+    waist = db.Column(db.Float, nullable=True)
+    hips = db.Column(db.Float, nullable=True)
+    shoulder_width = db.Column(db.Float, nullable=True)
+    arm_length = db.Column(db.Float, nullable=True)
+    inseam = db.Column(db.Float, nullable=True)
+    thigh = db.Column(db.Float, nullable=True)
+    neck = db.Column(db.Float, nullable=True)
+    calf = db.Column(db.Float, nullable=True)
+    wrist = db.Column(db.Float, nullable=True)
+
+    # Preferences (JSON stored)
+    patterns = db.Column(db.Text, nullable=True)  # JSON array of preferred patterns
+    necklines = db.Column(db.Text, nullable=True)  # JSON array of preferred necklines
+    sleeves = db.Column(db.Text, nullable=True)  # JSON array of preferred sleeves
+    top_styles = db.Column(db.Text, nullable=True)  # JSON array of preferred top styles
+    fabric_textures = db.Column(db.Text, nullable=True)  # JSON array of preferred fabric textures
+    fabric_types = db.Column(db.Text, nullable=True)  # JSON object of preferred fabric types
+
     measurement_unit = db.Column(db.String(20), nullable=False, default='cm')  # 'cm' or 'inches'
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
-    
+
     def to_dict(self):
+        import json
         return {
             'id': self.id,
             'account_id': self.account_id,
@@ -63,6 +92,25 @@ class BodyProfile(db.Model):
             'width': self.width,
             'build': self.build,
             'head': self.head,
+            'gender': self.gender,
+            'age': self.age,
+            'weight': self.weight,
+            'chest': self.chest,
+            'waist': self.waist,
+            'hips': self.hips,
+            'shoulder_width': self.shoulder_width,
+            'arm_length': self.arm_length,
+            'inseam': self.inseam,
+            'thigh': self.thigh,
+            'neck': self.neck,
+            'calf': self.calf,
+            'wrist': self.wrist,
+            'patterns': json.loads(self.patterns) if self.patterns else [],
+            'necklines': json.loads(self.necklines) if self.necklines else [],
+            'sleeves': json.loads(self.sleeves) if self.sleeves else [],
+            'top_styles': json.loads(self.top_styles) if self.top_styles else [],
+            'fabric_textures': json.loads(self.fabric_textures) if self.fabric_textures else [],
+            'fabric_types': json.loads(self.fabric_types) if self.fabric_types else {},
             'measurement_unit': self.measurement_unit,
             'created_at': self.created_at.isoformat(),
             'updated_at': self.updated_at.isoformat()
@@ -91,7 +139,11 @@ class GownDesign(db.Model):
     # SVG data
     svg = db.Column(db.Text, nullable=True)
     thumbnail = db.Column(db.LargeBinary, nullable=True)
-    
+
+    # Additional metadata for recent chats
+    measurements = db.Column(db.Text, nullable=True)  # Store measurements used for the design
+    customizations = db.Column(db.Text, nullable=True)  # Store customization details
+
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
     
@@ -110,10 +162,12 @@ class GownDesign(db.Model):
             'texture': self.texture,
             'texture_intensity': self.texture_intensity,
             'skirt_volume': self.skirt_volume,
+            'measurements': self.measurements,
+            'customizations': self.customizations,
             'created_at': self.created_at.isoformat(),
             'updated_at': self.updated_at.isoformat()
         }
-        
+
         # Include large fields if requested (e.g., for detail views)
         if include_large_fields:
             result['svg'] = self.svg
@@ -122,7 +176,7 @@ class GownDesign(db.Model):
                 result['thumbnail'] = f"data:image/png;base64,{base64.b64encode(self.thumbnail).decode('utf-8')}"
             else:
                 result['thumbnail'] = None
-        
+
         return result
 
 

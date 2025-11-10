@@ -6,16 +6,26 @@ const fallbackChats = [
     id: "1",
     name: "Emerald velvet with off-shoulder",
     created_at: new Date(Date.now() - 86400000).toISOString(),
+    measurements: "Height: 170cm, Bust: 90cm, Waist: 70cm, Hips: 95cm",
+    customizations:
+      "Color: Emerald, Pattern: Velvet, Neckline: Off-shoulder, Sleeve: Sleeveless",
+    prompt: "Create an elegant emerald velvet dress with off-shoulder neckline",
   },
   {
     id: "2",
     name: "Blush lace A-line with train",
     created_at: new Date(Date.now() - 2 * 86400000).toISOString(),
+    measurements: "Height: 165cm, Bust: 85cm, Waist: 65cm, Hips: 90cm",
+    customizations: "Color: Blush, Pattern: Lace, Style: A-line, Train: Yes",
+    prompt: "Design a romantic blush lace A-line gown with elegant train",
   },
   {
     id: "3",
     name: "Minimal silk slip dress",
     created_at: new Date(Date.now() - 3 * 86400000).toISOString(),
+    measurements: "Height: 175cm, Bust: 88cm, Waist: 68cm, Hips: 92cm",
+    customizations: "Color: Nude, Fabric: Silk, Style: Slip, Neckline: V-neck",
+    prompt: "Simple minimal silk slip dress for modern elegance",
   },
 ];
 
@@ -104,6 +114,24 @@ export default function RecentChats() {
                 >
                   {c.name}
                 </div>
+                {c.measurements && (
+                  <div className="mt-2 text-xs" style={{ color: "#004999" }}>
+                    <strong>Measurements:</strong> {c.measurements}
+                  </div>
+                )}
+                {c.customizations && (
+                  <div className="mt-1 text-xs" style={{ color: "#004999" }}>
+                    <strong>Customizations:</strong> {c.customizations}
+                  </div>
+                )}
+                {c.prompt && (
+                  <div
+                    className="mt-1 text-xs italic"
+                    style={{ color: "#0066cc" }}
+                  >
+                    "{c.prompt}"
+                  </div>
+                )}
                 <div className="mt-4 flex gap-2">
                   <button
                     className="text-xs px-3 py-1.5 rounded-md font-medium transition-all hover:opacity-90"

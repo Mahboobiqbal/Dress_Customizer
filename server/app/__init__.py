@@ -39,7 +39,7 @@ def create_app(config_name='development'):
     
     # Enable CORS with proper configuration
     cors_config = {
-        "origins": ["http://localhost:5173", "http://localhost:3000", "http://localhost:5000"],
+        "origins": ["http://localhost:5173", "http://localhost:5174", "http://localhost:3000", "http://localhost:5000"],
         "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
         "allow_headers": ["Content-Type", "Authorization"],
         "supports_credentials": True,

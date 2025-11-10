@@ -25,6 +25,25 @@ export default function Profile() {
     build: 0,
     head: 100,
     measurement_unit: "cm",
+    gender: "",
+    age: "",
+    weight: "",
+    chest: "",
+    waist: "",
+    hips: "",
+    shoulder_width: "",
+    arm_length: "",
+    inseam: "",
+    thigh: "",
+    neck: "",
+    calf: "",
+    wrist: "",
+    patterns: [],
+    necklines: [],
+    sleeves: [],
+    top_styles: [],
+    fabric_textures: [],
+    fabric_types: {},
   });
 
   // Fetch profile on component mount
@@ -53,6 +72,25 @@ export default function Profile() {
           build: profile.body_profile.build || 0,
           head: profile.body_profile.head || 100,
           measurement_unit: profile.body_profile.measurement_unit || "cm",
+          gender: profile.body_profile.gender || "",
+          age: profile.body_profile.age || "",
+          weight: profile.body_profile.weight || "",
+          chest: profile.body_profile.chest || "",
+          waist: profile.body_profile.waist || "",
+          hips: profile.body_profile.hips || "",
+          shoulder_width: profile.body_profile.shoulder_width || "",
+          arm_length: profile.body_profile.arm_length || "",
+          inseam: profile.body_profile.inseam || "",
+          thigh: profile.body_profile.thigh || "",
+          neck: profile.body_profile.neck || "",
+          calf: profile.body_profile.calf || "",
+          wrist: profile.body_profile.wrist || "",
+          patterns: profile.body_profile.patterns || [],
+          necklines: profile.body_profile.necklines || [],
+          sleeves: profile.body_profile.sleeves || [],
+          top_styles: profile.body_profile.top_styles || [],
+          fabric_textures: profile.body_profile.fabric_textures || [],
+          fabric_types: profile.body_profile.fabric_types || {},
         });
       }
     } catch (error) {
@@ -306,7 +344,116 @@ export default function Profile() {
             </div>
           </div>
 
-          {/* Body Profile Section */}
+          {/* Personal Information Section */}
+          <div
+            className="rounded-xl p-8"
+            style={{
+              background: "rgba(255,255,255,0.9)",
+              border: "1px solid rgba(255,255,255,0.6)",
+              boxShadow: "0 4px 20px rgba(0,102,204,0.1)",
+            }}
+          >
+            <h2
+              className="text-2xl font-semibold mb-6"
+              style={{ color: "#001a33" }}
+            >
+              Personal Information
+            </h2>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {/* Gender */}
+              <div>
+                <label
+                  className="block text-sm font-medium mb-2"
+                  style={{ color: "#001a33" }}
+                >
+                  Gender
+                </label>
+                <select
+                  name="gender"
+                  value={bodyProfile.gender}
+                  onChange={(e) =>
+                    setBodyProfile((prev) => ({
+                      ...prev,
+                      gender: e.target.value,
+                    }))
+                  }
+                  className="w-full px-4 py-2 rounded-lg border"
+                  style={{
+                    borderColor: "rgba(0,102,204,0.3)",
+                    background: "rgba(255,255,255,0.9)",
+                    color: "#001a33",
+                  }}
+                >
+                  <option value="">Select Gender</option>
+                  <option value="male">Male</option>
+                  <option value="female">Female</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+
+              {/* Age */}
+              <div>
+                <label
+                  className="block text-sm font-medium mb-2"
+                  style={{ color: "#001a33" }}
+                >
+                  Age
+                </label>
+                <input
+                  type="number"
+                  name="age"
+                  value={bodyProfile.age}
+                  onChange={(e) =>
+                    setBodyProfile((prev) => ({
+                      ...prev,
+                      age: e.target.value,
+                    }))
+                  }
+                  placeholder="Enter age"
+                  className="w-full px-4 py-2 rounded-lg border"
+                  style={{
+                    borderColor: "rgba(0,102,204,0.3)",
+                    background: "rgba(255,255,255,0.9)",
+                    color: "#001a33",
+                  }}
+                />
+              </div>
+
+              {/* Weight */}
+              <div>
+                <label
+                  className="block text-sm font-medium mb-2"
+                  style={{ color: "#001a33" }}
+                >
+                  Weight ({bodyProfile.measurement_unit === "cm" ? "kg" : "lbs"}
+                  )
+                </label>
+                <input
+                  type="number"
+                  name="weight"
+                  value={bodyProfile.weight}
+                  onChange={(e) =>
+                    setBodyProfile((prev) => ({
+                      ...prev,
+                      weight: e.target.value,
+                    }))
+                  }
+                  placeholder={`Enter weight in ${
+                    bodyProfile.measurement_unit === "cm" ? "kg" : "lbs"
+                  }`}
+                  className="w-full px-4 py-2 rounded-lg border"
+                  style={{
+                    borderColor: "rgba(0,102,204,0.3)",
+                    background: "rgba(255,255,255,0.9)",
+                    color: "#001a33",
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Body Measurements Section */}
           <div
             className="rounded-xl p-8"
             style={{
@@ -320,7 +467,7 @@ export default function Profile() {
                 className="text-2xl font-semibold"
                 style={{ color: "#001a33" }}
               >
-                Body Profile
+                Body Measurements
               </h2>
               <button
                 type="button"
@@ -337,8 +484,7 @@ export default function Profile() {
             </div>
 
             <p className="text-sm mb-6" style={{ color: "#0066cc" }}>
-              Customize your avatar's body proportions for accurate dress
-              previews
+              Enter your body measurements for accurate dress previews
             </p>
 
             {/* Measurement Unit Selector */}
@@ -368,6 +514,310 @@ export default function Profile() {
                 <option value="inches">Inches (in)</option>
               </select>
             </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {/* Chest */}
+              <div>
+                <label
+                  className="block text-sm font-medium mb-2"
+                  style={{ color: "#001a33" }}
+                >
+                  Chest ({bodyProfile.measurement_unit})
+                </label>
+                <input
+                  type="number"
+                  name="chest"
+                  value={bodyProfile.chest}
+                  onChange={(e) =>
+                    setBodyProfile((prev) => ({
+                      ...prev,
+                      chest: e.target.value,
+                    }))
+                  }
+                  placeholder={`Chest in ${bodyProfile.measurement_unit}`}
+                  className="w-full px-4 py-2 rounded-lg border"
+                  style={{
+                    borderColor: "rgba(0,102,204,0.3)",
+                    background: "rgba(255,255,255,0.9)",
+                    color: "#001a33",
+                  }}
+                />
+              </div>
+
+              {/* Waist */}
+              <div>
+                <label
+                  className="block text-sm font-medium mb-2"
+                  style={{ color: "#001a33" }}
+                >
+                  Waist ({bodyProfile.measurement_unit})
+                </label>
+                <input
+                  type="number"
+                  name="waist"
+                  value={bodyProfile.waist}
+                  onChange={(e) =>
+                    setBodyProfile((prev) => ({
+                      ...prev,
+                      waist: e.target.value,
+                    }))
+                  }
+                  placeholder={`Waist in ${bodyProfile.measurement_unit}`}
+                  className="w-full px-4 py-2 rounded-lg border"
+                  style={{
+                    borderColor: "rgba(0,102,204,0.3)",
+                    background: "rgba(255,255,255,0.9)",
+                    color: "#001a33",
+                  }}
+                />
+              </div>
+
+              {/* Hips */}
+              <div>
+                <label
+                  className="block text-sm font-medium mb-2"
+                  style={{ color: "#001a33" }}
+                >
+                  Hips ({bodyProfile.measurement_unit})
+                </label>
+                <input
+                  type="number"
+                  name="hips"
+                  value={bodyProfile.hips}
+                  onChange={(e) =>
+                    setBodyProfile((prev) => ({
+                      ...prev,
+                      hips: e.target.value,
+                    }))
+                  }
+                  placeholder={`Hips in ${bodyProfile.measurement_unit}`}
+                  className="w-full px-4 py-2 rounded-lg border"
+                  style={{
+                    borderColor: "rgba(0,102,204,0.3)",
+                    background: "rgba(255,255,255,0.9)",
+                    color: "#001a33",
+                  }}
+                />
+              </div>
+
+              {/* Shoulder Width */}
+              <div>
+                <label
+                  className="block text-sm font-medium mb-2"
+                  style={{ color: "#001a33" }}
+                >
+                  Shoulder Width ({bodyProfile.measurement_unit})
+                </label>
+                <input
+                  type="number"
+                  name="shoulder_width"
+                  value={bodyProfile.shoulder_width}
+                  onChange={(e) =>
+                    setBodyProfile((prev) => ({
+                      ...prev,
+                      shoulder_width: e.target.value,
+                    }))
+                  }
+                  placeholder={`Shoulder width in ${bodyProfile.measurement_unit}`}
+                  className="w-full px-4 py-2 rounded-lg border"
+                  style={{
+                    borderColor: "rgba(0,102,204,0.3)",
+                    background: "rgba(255,255,255,0.9)",
+                    color: "#001a33",
+                  }}
+                />
+              </div>
+
+              {/* Arm Length */}
+              <div>
+                <label
+                  className="block text-sm font-medium mb-2"
+                  style={{ color: "#001a33" }}
+                >
+                  Arm Length ({bodyProfile.measurement_unit})
+                </label>
+                <input
+                  type="number"
+                  name="arm_length"
+                  value={bodyProfile.arm_length}
+                  onChange={(e) =>
+                    setBodyProfile((prev) => ({
+                      ...prev,
+                      arm_length: e.target.value,
+                    }))
+                  }
+                  placeholder={`Arm length in ${bodyProfile.measurement_unit}`}
+                  className="w-full px-4 py-2 rounded-lg border"
+                  style={{
+                    borderColor: "rgba(0,102,204,0.3)",
+                    background: "rgba(255,255,255,0.9)",
+                    color: "#001a33",
+                  }}
+                />
+              </div>
+
+              {/* Inseam */}
+              <div>
+                <label
+                  className="block text-sm font-medium mb-2"
+                  style={{ color: "#001a33" }}
+                >
+                  Inseam ({bodyProfile.measurement_unit})
+                </label>
+                <input
+                  type="number"
+                  name="inseam"
+                  value={bodyProfile.inseam}
+                  onChange={(e) =>
+                    setBodyProfile((prev) => ({
+                      ...prev,
+                      inseam: e.target.value,
+                    }))
+                  }
+                  placeholder={`Inseam in ${bodyProfile.measurement_unit}`}
+                  className="w-full px-4 py-2 rounded-lg border"
+                  style={{
+                    borderColor: "rgba(0,102,204,0.3)",
+                    background: "rgba(255,255,255,0.9)",
+                    color: "#001a33",
+                  }}
+                />
+              </div>
+
+              {/* Thigh */}
+              <div>
+                <label
+                  className="block text-sm font-medium mb-2"
+                  style={{ color: "#001a33" }}
+                >
+                  Thigh ({bodyProfile.measurement_unit})
+                </label>
+                <input
+                  type="number"
+                  name="thigh"
+                  value={bodyProfile.thigh}
+                  onChange={(e) =>
+                    setBodyProfile((prev) => ({
+                      ...prev,
+                      thigh: e.target.value,
+                    }))
+                  }
+                  placeholder={`Thigh in ${bodyProfile.measurement_unit}`}
+                  className="w-full px-4 py-2 rounded-lg border"
+                  style={{
+                    borderColor: "rgba(0,102,204,0.3)",
+                    background: "rgba(255,255,255,0.9)",
+                    color: "#001a33",
+                  }}
+                />
+              </div>
+
+              {/* Neck */}
+              <div>
+                <label
+                  className="block text-sm font-medium mb-2"
+                  style={{ color: "#001a33" }}
+                >
+                  Neck ({bodyProfile.measurement_unit})
+                </label>
+                <input
+                  type="number"
+                  name="neck"
+                  value={bodyProfile.neck}
+                  onChange={(e) =>
+                    setBodyProfile((prev) => ({
+                      ...prev,
+                      neck: e.target.value,
+                    }))
+                  }
+                  placeholder={`Neck in ${bodyProfile.measurement_unit}`}
+                  className="w-full px-4 py-2 rounded-lg border"
+                  style={{
+                    borderColor: "rgba(0,102,204,0.3)",
+                    background: "rgba(255,255,255,0.9)",
+                    color: "#001a33",
+                  }}
+                />
+              </div>
+
+              {/* Calf */}
+              <div>
+                <label
+                  className="block text-sm font-medium mb-2"
+                  style={{ color: "#001a33" }}
+                >
+                  Calf ({bodyProfile.measurement_unit})
+                </label>
+                <input
+                  type="number"
+                  name="calf"
+                  value={bodyProfile.calf}
+                  onChange={(e) =>
+                    setBodyProfile((prev) => ({
+                      ...prev,
+                      calf: e.target.value,
+                    }))
+                  }
+                  placeholder={`Calf in ${bodyProfile.measurement_unit}`}
+                  className="w-full px-4 py-2 rounded-lg border"
+                  style={{
+                    borderColor: "rgba(0,102,204,0.3)",
+                    background: "rgba(255,255,255,0.9)",
+                    color: "#001a33",
+                  }}
+                />
+              </div>
+
+              {/* Wrist */}
+              <div>
+                <label
+                  className="block text-sm font-medium mb-2"
+                  style={{ color: "#001a33" }}
+                >
+                  Wrist ({bodyProfile.measurement_unit})
+                </label>
+                <input
+                  type="number"
+                  name="wrist"
+                  value={bodyProfile.wrist}
+                  onChange={(e) =>
+                    setBodyProfile((prev) => ({
+                      ...prev,
+                      wrist: e.target.value,
+                    }))
+                  }
+                  placeholder={`Wrist in ${bodyProfile.measurement_unit}`}
+                  className="w-full px-4 py-2 rounded-lg border"
+                  style={{
+                    borderColor: "rgba(0,102,204,0.3)",
+                    background: "rgba(255,255,255,0.9)",
+                    color: "#001a33",
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Avatar Proportions Section */}
+          <div
+            className="rounded-xl p-8"
+            style={{
+              background: "rgba(255,255,255,0.9)",
+              border: "1px solid rgba(255,255,255,0.6)",
+              boxShadow: "0 4px 20px rgba(0,102,204,0.1)",
+            }}
+          >
+            <h2
+              className="text-2xl font-semibold mb-6"
+              style={{ color: "#001a33" }}
+            >
+              Avatar Proportions
+            </h2>
+
+            <p className="text-sm mb-6" style={{ color: "#0066cc" }}>
+              Customize your avatar's body proportions for accurate dress
+              previews
+            </p>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Height */}

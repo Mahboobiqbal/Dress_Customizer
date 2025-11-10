@@ -80,7 +80,9 @@ def create_design():
             texture_intensity=float(data.get('texture_intensity', 40)),
             skirt_volume=float(data.get('skirt_volume', 60)),
             svg=data.get('svg'),
-            thumbnail=thumbnail_binary
+            thumbnail=thumbnail_binary,
+            measurements=data.get('measurements'),  # Store measurements used
+            customizations=data.get('customizations')  # Store customization details
         )
         
         db.session.add(design)
