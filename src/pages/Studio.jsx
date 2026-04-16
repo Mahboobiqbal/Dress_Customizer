@@ -88,7 +88,7 @@ export default function Studio() {
                 isAIGenerated: true,
               },
               ...v,
-            ].slice(0, 12)
+            ].slice(0, 12),
           );
 
           toast.success("AI image generated!");
@@ -98,7 +98,7 @@ export default function Studio() {
       } catch (error) {
         console.error("AI generation error:", error);
         toast.error(
-          "AI generation failed: " + (error.message || "Unknown error")
+          "AI generation failed: " + (error.message || "Unknown error"),
         );
       }
     } else {
@@ -208,9 +208,9 @@ export default function Studio() {
           {/* Sidebar moved to global ProtectedRoute layout */}
 
           {/* Main content area */}
-          <div className="lg:col-span-10">
+          <div className="lg:col-span-12">
             {/* Inputs + Suggestions and Preview */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
               {/* Left column: inputs and customization */}
               <section className="lg:col-span-7 order-2 lg:order-1 flex flex-col gap-4">
                 <CustomizerPanel
@@ -233,15 +233,17 @@ export default function Studio() {
               </section>
 
               {/* Right column: big preview */}
-              <section className="lg:col-span-5 order-1 lg:order-2">
-                <Preview
-                  params={params}
-                  ref={previewRef}
-                  isGenerating={isGenerating}
-                  onExportSvg={exportSvg}
-                  onExportPng={exportPng}
-                  useAI={useAI}
-                />
+              <section className="lg:col-span-5 order-1 lg:order-2 flex lg:justify-end justify-center">
+                <div className="w-full max-w-lg">
+                  <Preview
+                    params={params}
+                    ref={previewRef}
+                    isGenerating={isGenerating}
+                    onExportSvg={exportSvg}
+                    onExportPng={exportPng}
+                    useAI={useAI}
+                  />
+                </div>
               </section>
             </div>
 

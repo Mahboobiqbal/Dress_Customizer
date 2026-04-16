@@ -14,7 +14,7 @@ export default function PromptBar({
   return (
     <section className="mt-0">
       <div
-        className="rounded-xl border p-4 backdrop-blur-lg shadow-lg"
+        className="rounded-xl border p-4 backdrop-blur-lg shadow-lg flex flex-col gap-3"
         style={{
           border: "1px solid rgba(255,255,255,0.3)",
           background:
@@ -22,48 +22,32 @@ export default function PromptBar({
           color: "#001a33",
         }}
       >
-        <div className="flex flex-col md:flex-row gap-3">
-          <textarea
-            value={prompt}
-            onChange={(e) => onChange(e.target.value)}
-            rows={2}
-            placeholder="Describe your dress… e.g. 'Generate a blue evening gown with lace sleeves and a long train.'"
-            className="flex-1 resize-none rounded-lg border px-3 py-2 focus:outline-none focus:ring-2 backdrop-blur-sm"
-            style={{
-              border: "1px solid rgba(255,255,255,0.3)",
-              background: "rgba(255,255,255,0.3)",
-              color: "#001a33",
-            }}
-          />
-          <button
-            onClick={onGenerate}
-            disabled={isGenerating || !prompt.trim()}
-            className="w-full md:w-auto md:self-start inline-flex items-center justify-center whitespace-nowrap rounded-lg font-medium shadow-lg transition-all duration-200 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
-            style={{
-              background: "linear-gradient(90deg,#0066cc 0%,#0099ff 100%)",
-              color: "#ffffff",
-              border: "none",
-            }}
-          >
-            {isGenerating ? (
-              <span className="inline-flex items-center gap-2">
-                <Spinner className="w-4 h-4 text-[#021018]" /> Generating…
-              </span>
-            ) : (
-              <span className="inline-flex items-center gap-2">
-                <WandIcon className="w-4 h-4 text-[#021018]" /> Generate
-              </span>
-            )}
-          </button>
-        </div>
-        <div className="mt-3 flex flex-wrap gap-2">
+        <h2 className="text-sm font-medium uppercase tracking-wider text-[#0066cc]">
+          Magic Prompt
+        </h2>
+
+        <textarea
+          value={prompt}
+          onChange={(e) => onChange(e.target.value)}
+          rows={3}
+          placeholder="Describe your dress… e.g. 'Generate a blue evening gown with lace sleeves and a long train.'"
+          className="w-full resize-none rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0099ff] backdrop-blur-sm"
+          style={{
+            border: "1px solid rgba(255,255,255,0.5)",
+            background: "rgba(255,255,255,0.4)",
+            color: "#001a33",
+          }}
+        />
+
+        <div className="flex flex-wrap gap-2">
           {suggestions.map((s) => (
             <button
               key={s}
               onClick={() => onChange(s)}
-              className="text-xs px-2.5 py-1 rounded-lg border transition-all duration-200"
+              className="text-xs px-2.5 py-1 rounded-full border transition-all duration-200 hover:bg-white/50 cursor-pointer"
               style={{
-                border: "1px solid rgba(255,255,255,0.3)",
+                border: "1px solid rgba(0, 102, 204, 0.2)",
+                background: "rgba(255,255,255,0.2)",
                 color: "#001a33",
               }}
             >
@@ -71,6 +55,27 @@ export default function PromptBar({
             </button>
           ))}
         </div>
+
+        <button
+          onClick={onGenerate}
+          disabled={isGenerating || !prompt.trim()}
+          className="mt-2 w-full inline-flex items-center justify-center whitespace-nowrap rounded-lg px-4 py-2.5 font-medium shadow-md transition-all duration-200 hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed"
+          style={{
+            background: "linear-gradient(90deg,#0066cc 0%,#0099ff 100%)",
+            color: "#ffffff",
+            border: "none",
+          }}
+        >
+          {isGenerating ? (
+            <span className="inline-flex items-center gap-2">
+              <Spinner className="w-4 h-4 text-white" /> Generating…
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-2">
+              <WandIcon className="w-4 h-4 text-white" /> Generate Design
+            </span>
+          )}
+        </button>
       </div>
     </section>
   );

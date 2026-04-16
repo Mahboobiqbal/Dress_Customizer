@@ -100,53 +100,10 @@ def create_design():
 @jwt_required()
 def update_design(design_id):
     """Update an existing gown design."""
-    try:
-        account_id = get_jwt_identity()
-        design = GownDesign.query.filter_by(id=design_id, account_id=account_id).first()
-        
-        if not design:
-            return jsonify({'error': 'Design not found'}), 404
-        
-        data = request.get_json()
-        
-        # Update fields if provided
-        if 'name' in data:
-            design.name = data['name']
-        if 'prompt' in data:
-            design.prompt = data['prompt']
-        if 'color' in data:
-            design.color = data['color']
-        if 'pattern' in data:
-            design.pattern = data['pattern']
-        if 'sleeve_length' in data:
-            design.sleeve_length = float(data['sleeve_length'])
-        if 'neckline' in data:
-            design.neckline = data['neckline']
-        if 'train_length' in data:
-            design.train_length = float(data['train_length'])
-        if 'texture' in data:
-            design.texture = data['texture']
-        if 'texture_intensity' in data:
-            design.texture_intensity = float(data['texture_intensity'])
-        if 'skirt_volume' in data:
-            design.skirt_volume = float(data['skirt_volume'])
-        if 'svg' in data:
-            design.svg = data['svg']
-        if 'thumbnail' in data:
-            # Decode thumbnail if it's a base64 data URL
-            design.thumbnail = decode_base64_thumbnail(data['thumbnail'])
-        
-        db.session.commit()
-        
-        return jsonify({
-            'message': 'Design updated successfully',
-            'design': design.to_dict()
-        }), 200
-    
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'error': str(e)}), 500
-
+    return jsonify({
+        'error': 'This modification functionality is coming soon.',
+        'coming_soon': True
+    }), 501
 
 @gown_designs_bp.route('/<design_id>', methods=['DELETE'])
 @jwt_required()

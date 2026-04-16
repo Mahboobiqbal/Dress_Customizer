@@ -23,80 +23,102 @@ export default function CustomizerPanel({
 
   return (
     <div
-      className="rounded-xl border p-4 backdrop-blur-lg shadow-lg"
+      className="rounded-2xl border p-5 backdrop-blur-lg shadow-xl"
       style={{
-        border: "1px solid rgba(255,255,255,0.3)",
+        border: "1px solid rgba(255,255,255,0.4)",
         background:
-          "linear-gradient(135deg, rgba(255,255,255,0.4), rgba(255,255,255,0.2))",
+          "linear-gradient(145deg, rgba(255,255,255,0.6), rgba(255,255,255,0.3))",
         color: "#001a33",
       }}
     >
-      <h2 className="text-sm font-medium uppercase tracking-wider text-[#0066cc]">
-        Customize
-      </h2>
+      <div className="flex items-center justify-between border-b border-[#0066cc]/20 pb-3 mb-4">
+        <h2 className="text-base font-bold uppercase tracking-widest text-[#0066cc] flex items-center gap-2">
+          <svg
+            className="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="2"
+              d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"
+            ></path>
+          </svg>
+          Customize
+        </h2>
 
-      {/* AI Toggle */}
-      <div className="mt-4">
-        <Label>Generation Mode</Label>
-        <div className="mt-2 flex items-center gap-4">
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="radio"
-              name="generation-mode"
-              checked={!useAI}
-              onChange={() => setUseAI(false)}
-              className="w-4 h-4 text-[#0066cc] focus:ring-[#0066cc]"
-            />
-            <span className="text-sm" style={{ color: "#001a33" }}>
-              SVG (Procedural)
-            </span>
-          </label>
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="radio"
-              name="generation-mode"
-              checked={useAI}
-              onChange={() => setUseAI(true)}
-              className="w-4 h-4 text-[#0066cc] focus:ring-[#0066cc]"
-            />
-            <span className="text-sm" style={{ color: "#001a33" }}>
-              AI (Stable Diffusion)
-            </span>
-          </label>
+        {/* Toggle Mode Button */}
+        <div className="bg-white/40 p-1 rounded-lg border border-white/50 flex shadow-inner">
+          <button
+            onClick={() => setUseAI(false)}
+            className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${
+              !useAI
+                ? "bg-[#0066cc] text-white shadow"
+                : "text-[#001a33] hover:bg-white/50"
+            }`}
+          >
+            SVG
+          </button>
+          <button
+            onClick={() => setUseAI(true)}
+            className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${
+              useAI
+                ? "bg-[#0099ff] text-white shadow"
+                : "text-[#001a33] hover:bg-white/50"
+            }`}
+          >
+            AI
+          </button>
         </div>
       </div>
 
       {useAI ? (
-        <div className="mt-4">
-          <Label>AI Prompt</Label>
+        <div className="flex flex-col gap-2">
+          <Label>Generation Prompt</Label>
           <textarea
             value={params.prompt || ""}
             onChange={(e) => set("prompt", e.target.value)}
             placeholder="Describe your dream dress (e.g., 'elegant red evening gown with lace details')"
-            className="mt-2 w-full rounded-lg border px-3 py-2 backdrop-blur-sm resize-none"
+            className="w-full rounded-xl border px-4 py-3 text-sm backdrop-blur-md resize-none shadow-inner focus:outline-none focus:ring-2 focus:ring-[#0099ff] focus:border-transparent transition-all"
             style={{
-              border: "1px solid rgba(255,255,255,0.3)",
-              background: "rgba(255,255,255,0.3)",
+              border: "1px solid rgba(255,255,255,0.7)",
+              background: "rgba(255,255,255,0.5)",
               color: "#001a33",
-              minHeight: "80px",
+              minHeight: "120px",
             }}
-            rows={3}
+            rows={4}
           />
-          <p className="mt-2 text-xs" style={{ color: "#0066cc" }}>
-            AI generation may take a few seconds. Results are powered by Stable
-            Diffusion.
+          <button
+            onClick={onGenerate}
+            disabled={isGenerating || !params.prompt?.trim()}
+            className="mt-3 w-full inline-flex items-center justify-center whitespace-nowrap rounded-xl px-5 py-3 font-bold shadow-md transition-all duration-200 hover:scale-[1.02] hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+            style={{
+              background: "linear-gradient(135deg,#0055bb 0%,#0099ff 100%)",
+              color: "#ffffff",
+              border: "none",
+            }}
+          >
+            {isGenerating ? "Generating…" : "Generate AI Image"}
+          </button>
+          <p
+            className="mt-2 text-xs text-center font-medium opacity-80"
+            style={{ color: "#0055bb" }}
+          >
+            Powered by Google Generative AI
           </p>
         </div>
       ) : (
-        <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-6">
           <div className="col-span-1">
-            <Label>Color</Label>
-            <div className="flex items-center gap-2 mt-2">
+            <Label>Color Palette</Label>
+            <div className="flex items-center gap-3 mt-3">
               <input
                 type="color"
                 value={params.color}
                 onChange={(e) => set("color", e.target.value)}
-                className="h-9 w-12 rounded-lg border border-[rgba(124,92,255,0.3)] bg-gradient-to-br from-[rgba(124,92,255,0.1)] to-[rgba(59,232,208,0.1)]"
+                className="h-10 w-14 rounded-xl border border-white/60 bg-white/40 cursor-pointer shadow-sm p-0 overflow-hidden"
               />
               <div className="flex flex-wrap gap-2">
                 {presets.map((c) => (
@@ -104,10 +126,10 @@ export default function CustomizerPanel({
                     key={c}
                     onClick={() => set("color", c)}
                     aria-pressed={params.color === c}
-                    className={`h-7 w-7 rounded-full border-2 border-transparent ring-2 ring-transparent transition-all duration-200 hover:scale-110 ${
+                    className={`h-8 w-8 rounded-full border border-white/40 ring-2 ring-transparent transition-all duration-200 hover:scale-110 shadow-sm ${
                       params.color === c
-                        ? "ring-[linear-gradient(90deg,#7c5cff 0%,#3be8d0 100%)] ring-offset-2"
-                        : "hover:ring-[rgba(124,92,255,0.5)]"
+                        ? "ring-[#0099ff] ring-offset-2 ring-offset-white/50 scale-110"
+                        : "hover:ring-[#0066cc]/50"
                     }`}
                     style={{ background: c }}
                     title={c}
@@ -122,10 +144,10 @@ export default function CustomizerPanel({
             <select
               value={params.pattern}
               onChange={(e) => set("pattern", e.target.value)}
-              className="mt-2 w-full rounded-lg border px-3 py-2 backdrop-blur-sm"
+              className="mt-2 w-full rounded-xl border px-3 py-2.5 text-sm backdrop-blur-md shadow-sm focus:outline-none focus:ring-2 focus:ring-[#0099ff] transition-all cursor-pointer"
               style={{
-                border: "1px solid rgba(255,255,255,0.3)",
-                background: "rgba(255,255,255,0.3)",
+                border: "1px solid rgba(255,255,255,0.7)",
+                background: "rgba(255,255,255,0.5)",
                 color: "#001a33",
               }}
             >
@@ -138,7 +160,7 @@ export default function CustomizerPanel({
           </div>
 
           <Slider
-            label="Sleeve length"
+            label="Sleeve Length"
             value={params.sleeveLength}
             onChange={(v) => set("sleeveLength", v)}
           />
@@ -148,42 +170,42 @@ export default function CustomizerPanel({
             <select
               value={params.neckline}
               onChange={(e) => set("neckline", e.target.value)}
-              className="mt-2 w-full rounded-lg border px-3 py-2 backdrop-blur-sm"
+              className="mt-2 w-full rounded-xl border px-3 py-2.5 text-sm backdrop-blur-md shadow-sm focus:outline-none focus:ring-2 focus:ring-[#0099ff] transition-all cursor-pointer"
               style={{
-                border: "1px solid rgba(255,255,255,0.3)",
-                background: "rgba(255,255,255,0.3)",
+                border: "1px solid rgba(255,255,255,0.7)",
+                background: "rgba(255,255,255,0.5)",
                 color: "#001a33",
               }}
             >
-              <option value="v-neck">V‑neck</option>
+              <option value="v-neck">V‑Neck</option>
               <option value="scoop">Scoop</option>
-              <option value="off-shoulder">Off‑shoulder</option>
+              <option value="off-shoulder">Off‑Shoulder</option>
               <option value="halter">Halter</option>
               <option value="boat">Boat</option>
             </select>
           </div>
 
           <Slider
-            label="Train length"
+            label="Train Length"
             value={params.trainLength}
             onChange={(v) => set("trainLength", v)}
           />
 
           <Slider
-            label="Skirt volume"
+            label="Skirt Volume"
             value={params.skirtVolume}
             onChange={(v) => set("skirtVolume", v)}
           />
 
           <div>
-            <Label>Fabric texture</Label>
+            <Label>Fabric</Label>
             <select
               value={params.texture}
               onChange={(e) => set("texture", e.target.value)}
-              className="mt-2 w-full rounded-lg border px-3 py-2 backdrop-blur-sm"
+              className="mt-2 w-full rounded-xl border px-3 py-2.5 text-sm backdrop-blur-md shadow-sm focus:outline-none focus:ring-2 focus:ring-[#0099ff] transition-all cursor-pointer"
               style={{
-                border: "1px solid rgba(255,255,255,0.3)",
-                background: "rgba(255,255,255,0.3)",
+                border: "1px solid rgba(255,255,255,0.7)",
+                background: "rgba(255,255,255,0.5)",
                 color: "#001a33",
               }}
             >
@@ -196,49 +218,52 @@ export default function CustomizerPanel({
           </div>
 
           <Slider
-            label="Texture intensity"
+            label="Texture Intensity"
             value={params.textureIntensity}
             onChange={(v) => set("textureIntensity", v)}
           />
         </div>
       )}
 
-      <div className="mt-4 flex gap-2">
-        <button
-          onClick={onGenerate}
-          disabled={
-            isGenerating || (!useAI && !params.color && !params.pattern)
-          }
-          className="inline-flex items-center gap-2 rounded-lg px-4 py-2 font-medium shadow-lg transition-all duration-200 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed flex-1"
-          style={{
-            background: "linear-gradient(90deg,#0066cc 0%,#0099ff 100%)",
-            color: "#ffffff",
-            border: "none",
-          }}
-        >
-          {isGenerating ? (
-            <>
-              <Spinner className="w-4 h-4" /> Generating…
-            </>
-          ) : (
-            <>
-              <WandIcon className="w-4 h-4" /> Generate
-            </>
-          )}
-        </button>
-        <button
-          onClick={onSaveVariant}
-          disabled={isGenerating}
-          className="inline-flex items-center gap-2 rounded-lg px-3 py-2 font-medium shadow-lg transition-all duration-200 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
-          style={{
-            background: "linear-gradient(90deg,#0066cc 0%,#0099ff 100%)",
-            color: "#ffffff",
-            border: "none",
-          }}
-        >
-          <SaveIcon className="w-4 h-4" /> Save
-        </button>
-      </div>
+      {/* Footer controls for procedural / common actions */}
+      {!useAI && (
+        <div className="mt-8 flex gap-3">
+          <button
+            onClick={onGenerate}
+            disabled={
+              isGenerating || (!useAI && !params.color && !params.pattern)
+            }
+            className="inline-flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 font-bold shadow-md transition-all duration-200 hover:scale-[1.02] hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex-1"
+            style={{
+              background: "linear-gradient(135deg,#0055bb 0%,#0099ff 100%)",
+              color: "#ffffff",
+              border: "none",
+            }}
+          >
+            {isGenerating ? (
+              <>
+                <Spinner className="w-5 h-5" /> Rendering...
+              </>
+            ) : (
+              <>
+                <WandIcon className="w-5 h-5" /> Render
+              </>
+            )}
+          </button>
+          <button
+            onClick={onSaveVariant}
+            disabled={isGenerating}
+            className="inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 font-bold shadow-md transition-all duration-200 hover:scale-[1.02] hover:shadow-lg hover:bg-white/80 disabled:opacity-50 disabled:cursor-not-allowed"
+            style={{
+              background: "rgba(255,255,255,0.6)",
+              color: "#0066cc",
+              border: "1px solid rgba(255,255,255,1)",
+            }}
+          >
+            <SaveIcon className="w-5 h-5" /> Save
+          </button>
+        </div>
+      )}
     </div>
   );
 }

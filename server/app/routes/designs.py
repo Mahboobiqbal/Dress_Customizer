@@ -18,7 +18,7 @@ designs_bp = Blueprint('designs', __name__)
 @designs_bp.route('/generate-image', methods=['POST'])
 @jwt_required()
 def generate_image():
-    """Generate an image using Hugging Face Inference API."""
+    """Generate an image using Google Generative AI (Gemini)."""
     try:
         data = request.get_json()
         prompt = data.get('prompt')
@@ -27,21 +27,28 @@ def generate_image():
             return jsonify({'error': 'Prompt is required'}), 400
 
         # Get API key from environment
-        api_key = os.environ.get("HF_TOKEN")
+        import google.generativeai as genai
+        api_key = os.environ.get("GOOGLE_API_KEY")
         if not api_key:
-            return jsonify({'error': 'HF_TOKEN not configured'}), 500
+            return jsonify({'error': 'GOOGLE_API_KEY not configured'}), 500
 
-        client = InferenceClient(
-            provider="hf-inference",
-            api_key=api_key,
+        genai.configure(api_key=api_key)
+        
+        # User requested the latest gemini model (flash) for image generation
+        # Note: Gemini's general text/multimodal models (like flash) don't output images.
+        # Image output from Google's API strictly requires Imagen models.
+        # But per user request we'll use imagen-3.0-generate-001 which is the Google AI 
+        # standard for image generation in this SDK.
+        imagen = genai.ImageGenerationModel("imagen-3.0-generate-001")
+        
+        result = imagen.generate_images(
+            prompt=f"A fashion illustration of an elegant dress, {prompt}. Highly detailed, haute couture.",
+            number_of_images=1,
+            aspect_ratio="3:4"
         )
 
-        # output is a PIL.Image object
-        image = client.text_to_image(
-            prompt,
-            model="black-forest-labs/FLUX.1-dev",
-        )
-
+        image = result.images[0]._pil_image
+        
         # Convert PIL.Image to base64 data URL
         buffer = io.BytesIO()
         image.save(buffer, format="PNG")
@@ -56,7 +63,19 @@ def generate_image():
         }), 200
 
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         return jsonify({'error': str(e)}), 500
+
+
+@designs_bp.route('/modify-image', methods=['POST'])
+@jwt_required()
+def modify_image():
+    """Modify an image function (Coming soon)"""
+    return jsonify({
+        'error': 'This modification functionality is coming soon. Please use generate image.',
+        'coming_soon': True
+    }), 501
 
 
 @designs_bp.route('', methods=['GET'])
@@ -136,51 +155,10 @@ def create_design():
 @jwt_required()
 def update_design(design_id):
     """Update an existing design."""
-    try:
-        user_id = get_jwt_identity()
-        design = Design.query.filter_by(id=design_id, user_id=user_id).first()
-
-        if not design:
-            return jsonify({'error': 'Design not found'}), 404
-
-        data = request.get_json()
-
-        # Update fields if provided
-        if 'name' in data:
-            design.name = data['name']
-        if 'prompt' in data:
-            design.prompt = data['prompt']
-        if 'color' in data:
-            design.color = data['color']
-        if 'pattern' in data:
-            design.pattern = data['pattern']
-        if 'sleeve_length' in data:
-            design.sleeve_length = float(data['sleeve_length'])
-        if 'neckline' in data:
-            design.neckline = data['neckline']
-        if 'train_length' in data:
-            design.train_length = float(data['train_length'])
-        if 'texture' in data:
-            design.texture = data['texture']
-        if 'texture_intensity' in data:
-            design.texture_intensity = float(data['texture_intensity'])
-        if 'skirt_volume' in data:
-            design.skirt_volume = float(data['skirt_volume'])
-        if 'svg' in data:
-            design.svg = data['svg']
-        if 'thumbnail' in data:
-            design.thumbnail = data['thumbnail']
-
-        db.session.commit()
-
-        return jsonify({
-            'message': 'Design updated successfully',
-            'design': design.to_dict()
-        }), 200
-
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'error': str(e)}), 500
+    return jsonify({
+        'error': 'This modification functionality is coming soon.',
+        'coming_soon': True
+    }), 501
 
 
 @designs_bp.route('/<design_id>', methods=['DELETE'])

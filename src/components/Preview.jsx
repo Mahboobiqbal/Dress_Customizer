@@ -3,28 +3,29 @@ import { DressSVG } from "../utils/dressGenerator.jsx";
 
 const Preview = forwardRef(function Preview(
   { params, isGenerating, onExportSvg, onExportPng, useAI },
-  ref
+  ref,
 ) {
   return (
     <div
-      className="rounded-xl border p-4 backdrop-blur-lg shadow-lg"
+      className="rounded-2xl border p-5 backdrop-blur-lg shadow-xl flex flex-col h-full"
       style={{
-        border: "1px solid rgba(255,255,255,0.3)",
+        border: "1px solid rgba(255,255,255,0.4)",
         background:
-          "linear-gradient(135deg, rgba(255,255,255,0.4), rgba(255,255,255,0.2))",
+          "linear-gradient(145deg, rgba(255,255,255,0.6), rgba(255,255,255,0.3))",
         color: "#001a33",
       }}
     >
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-        <h2 className="text-sm font-medium uppercase tracking-wider text-[#0066cc]">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-[#0066cc]/20 pb-3 mb-4">
+        <h2 className="text-base font-bold uppercase tracking-widest text-[#0066cc]">
           Preview
         </h2>
         <div className="flex gap-2">
           <button
             onClick={onExportSvg}
-            className="text-xs px-3 py-1.5 rounded-lg border transition-all duration-200"
+            className="text-xs px-3 py-1.5 rounded-lg border font-medium transition-all duration-200 shadow-sm hover:bg-white/50"
             style={{
-              border: "1px solid rgba(255,255,255,0.3)",
+              border: "1px solid rgba(0, 102, 204, 0.2)",
+              background: "rgba(255,255,255,0.4)",
               color: "#001a33",
             }}
           >
@@ -32,9 +33,10 @@ const Preview = forwardRef(function Preview(
           </button>
           <button
             onClick={onExportPng}
-            className="text-xs px-3 py-1.5 rounded-lg border transition-all duration-200"
+            className="text-xs px-3 py-1.5 rounded-lg border font-medium transition-all duration-200 shadow-sm hover:bg-white/50"
             style={{
-              border: "1px solid rgba(255,255,255,0.3)",
+              border: "1px solid rgba(0, 102, 204, 0.2)",
+              background: "rgba(255,255,255,0.4)",
               color: "#001a33",
             }}
           >
@@ -44,10 +46,10 @@ const Preview = forwardRef(function Preview(
       </div>
 
       <div
-        className="mt-3 aspect-5/7 w-full rounded-lg grid place-items-center overflow-hidden border"
+        className="flex-1 min-h-[500px] w-full rounded-xl grid place-items-center overflow-hidden shadow-inner"
         style={{
           background: "rgba(255,255,255,0.5)",
-          border: "1px solid rgba(255,255,255,0.3)",
+          border: "1px solid rgba(255,255,255,0.5)",
         }}
       >
         {isGenerating ? (
