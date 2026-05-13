@@ -33,3 +33,6 @@ migrations
 alembic.ini
 
 serever/migrations
+
+# Uploaded images
+uploads/
