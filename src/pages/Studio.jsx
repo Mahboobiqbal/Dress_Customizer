@@ -19,7 +19,76 @@ export default function Studio() {
     neckline: "v-neck", trainLength: 50, texture: "satin",
     textureIntensity: 40, skirtVolume: 60, prompt: "",
   });
+  const [savedStyles, setSavedStyles] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("saved_styles") || "[]"); } catch { return []; }
+  });
+  const [showSlashMenu, setShowSlashMenu] = useState(false);
+  const [slashFilter, setSlashFilter] = useState("");
+  const [slashIndex, setSlashIndex] = useState(0);
+  const [showSaveDialog, setShowSaveDialog] = useState(false);
+  const [saveName, setSaveName] = useState("");
+  const [saveNameError, setSaveNameError] = useState("");
+  const inputRef = useRef(null);
   const chatEndRef = useRef(null);
+
+  const saveCurrentStyle = () => {
+    setSaveName("");
+    setSaveNameError("");
+    setShowSaveDialog(true);
+  };
+
+  const confirmSaveStyle = () => {
+    const name = saveName.trim();
+    if (!name) {
+      setSaveNameError("Please enter a name");
+      return;
+    }
+    const style = {
+      id: Date.now().toString(),
+      name: name,
+      color: params.color,
+      pattern: params.pattern,
+      sleeveLength: params.sleeveLength,
+      neckline: params.neckline,
+      trainLength: params.trainLength,
+      texture: params.texture,
+      textureIntensity: params.textureIntensity,
+      skirtVolume: params.skirtVolume,
+    };
+    const updated = [...savedStyles, style];
+    setSavedStyles(updated);
+    localStorage.setItem("saved_styles", JSON.stringify(updated));
+    setShowSaveDialog(false);
+    toast.success(`Style "${name}" saved!`);
+  };
+
+  const applyStyle = (style) => {
+    setParams((p) => ({
+      ...p,
+      color: style.color || p.color,
+      pattern: style.pattern || p.pattern,
+      sleeveLength: style.sleeveLength ?? p.sleeveLength,
+      neckline: style.neckline || p.neckline,
+      trainLength: style.trainLength ?? p.trainLength,
+      texture: style.texture || p.texture,
+      textureIntensity: style.textureIntensity ?? p.textureIntensity,
+      skirtVolume: style.skirtVolume ?? p.skirtVolume,
+    }));
+    setPrompt((prev) => {
+      const withoutSlash = prev.replace(/\/\w*$/, "").trim();
+      return withoutSlash ? `${withoutSlash} ` : "";
+    });
+    setShowSlashMenu(false);
+    setShowCustomize(true);
+    inputRef.current?.focus();
+  };
+
+  const deleteStyle = (styleId) => {
+    const updated = savedStyles.filter((s) => s.id !== styleId);
+    setSavedStyles(updated);
+    localStorage.setItem("saved_styles", JSON.stringify(updated));
+    toast.success("Style deleted");
+  };
 
   useEffect(() => {
     aiAPI.listModels().then((res) => {
@@ -115,7 +184,46 @@ export default function Studio() {
     setPrompt("");
   };
 
+  const handleInputChange = (e) => {
+    const val = e.target.value;
+    setPrompt(val);
+
+    const slashMatch = val.match(/\/(\w*)$/);
+    if (slashMatch) {
+      setSlashFilter(slashMatch[1].toLowerCase());
+      setSlashIndex(0);
+      setShowSlashMenu(true);
+    } else if (showSlashMenu) {
+      setShowSlashMenu(false);
+    }
+  };
+
   const handleKeyDown = (e) => {
+    if (showSlashMenu) {
+      const filtered = savedStyles.filter((s) => s.name.toLowerCase().includes(slashFilter));
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setSlashIndex((prev) => Math.min(prev + 1, filtered.length - 1));
+        return;
+      }
+      if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setSlashIndex((prev) => Math.max(prev - 1, 0));
+        return;
+      }
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        if (filtered.length > 0) {
+          applyStyle(filtered[Math.min(slashIndex, filtered.length - 1)]);
+          return;
+        }
+        setShowSlashMenu(false);
+      }
+      if (e.key === "Escape") {
+        setShowSlashMenu(false);
+        return;
+      }
+    }
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       onGenerate();
@@ -200,13 +308,35 @@ export default function Studio() {
         <div className="p-4">
           <CustomizerPanel
             params={params} setParams={setParams}
-            onSaveVariant={() => {}}
+            onSaveVariant={saveCurrentStyle}
             isGenerating={isGenerating} onGenerate={onGenerate}
             models={models} selectedModel={selectedModel} onModelChange={setSelectedModel}
           />
         </div>
       </div>
       {showCustomize && <div className="fixed inset-0 z-40 bg-black/20" onClick={() => setShowCustomize(false)} />}
+
+      {showSaveDialog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm" onClick={() => setShowSaveDialog(false)}>
+          <div className="rounded-xl border shadow-xl p-5 w-full max-w-sm mx-4" style={{ background: "rgba(255,255,255,0.95)", border: "1px solid rgba(255,255,255,0.5)" }} onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-sm font-bold uppercase tracking-wider mb-3" style={{ color: "#0066cc" }}>Save Design Style</h3>
+            <input
+              autoFocus
+              value={saveName}
+              onChange={(e) => { setSaveName(e.target.value); setSaveNameError(""); }}
+              onKeyDown={(e) => { if (e.key === "Enter") confirmSaveStyle(); if (e.key === "Escape") setShowSaveDialog(false); }}
+              placeholder="e.g. My Red Velvet Dress"
+              className="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0099ff]"
+              style={{ border: "1px solid rgba(0,102,204,0.2)", color: "#001a33" }}
+            />
+            {saveNameError && <p className="text-xs mt-1" style={{ color: "#E11D48" }}>{saveNameError}</p>}
+            <div className="flex gap-2 mt-4">
+              <button onClick={() => setShowSaveDialog(false)} className="flex-1 text-xs px-3 py-2 rounded-lg font-medium" style={{ background: "rgba(255,255,255,0.5)", color: "#0066cc", border: "1px solid rgba(0,102,204,0.2)" }}>Cancel</button>
+              <button onClick={confirmSaveStyle} className="flex-1 text-xs px-3 py-2 rounded-lg font-medium text-white" style={{ background: "linear-gradient(90deg,#0066cc,#0099ff)", border: "none" }}>Save</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4 min-h-0">
         {messages.length === 0 ? (
@@ -275,19 +405,71 @@ export default function Studio() {
             background: "rgba(255,255,255,0.6)",
           }}
         >
-          <textarea
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Describe what you want to design..."
-            rows={2}
-            className="flex-1 resize-none rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0099ff] backdrop-blur-sm"
-            style={{
-              border: "1px solid rgba(255,255,255,0.5)",
-              background: "rgba(255,255,255,0.4)",
-              color: "#001a33",
-            }}
-          />
+          <div className="flex-1 relative">
+            {showSlashMenu && (
+              <div
+                className="absolute bottom-full left-0 right-0 mb-1 rounded-xl border shadow-lg backdrop-blur-xl overflow-hidden"
+                style={{
+                  border: "1px solid rgba(255,255,255,0.4)",
+                  background: "rgba(255,255,255,0.95)",
+                  maxHeight: "200px",
+                  overflowY: "auto",
+                }}
+              >
+                <div className="px-3 py-1.5 text-[10px] font-medium uppercase tracking-wider" style={{ color: "#0066cc" }}>
+                  Saved Styles
+                </div>
+                {savedStyles.length === 0 ? (
+                  <p className="px-3 py-3 text-xs text-center opacity-60">
+                    No saved styles yet. Open Customize panel and click Save.
+                  </p>
+                ) : (
+                  savedStyles.filter((s) => s.name.toLowerCase().includes(slashFilter)).map((style, i) => (
+                    <button
+                      key={style.id}
+                      className={`w-full flex items-center justify-between px-3 py-2 text-sm transition-colors text-left ${
+                        i === slashIndex ? "bg-[#0066cc]/15" : "hover:bg-[#0066cc]/10"
+                      }`}
+                      style={{ color: "#001a33" }}
+                      onClick={() => applyStyle(style)}
+                      onMouseEnter={() => setSlashIndex(i)}
+                    >
+                      <span className="flex items-center gap-2">
+                        <span
+                          className="w-3 h-3 rounded-full border border-white/50 inline-block shrink-0"
+                          style={{ background: style.color }}
+                        />
+                        {style.name}
+                      </span>
+                      <span
+                        className="text-[10px] opacity-40 hover:opacity-100 px-1"
+                        onClick={(e) => { e.stopPropagation(); deleteStyle(style.id); }}
+                      >
+                        x
+                      </span>
+                    </button>
+                  ))
+                )}
+                {savedStyles.length > 0 && savedStyles.filter((s) => s.name.toLowerCase().includes(slashFilter)).length === 0 && (
+                  <p className="px-3 py-2 text-xs opacity-50">No matching styles</p>
+                )}
+              </div>
+            )}
+            <textarea
+              ref={inputRef}
+              value={prompt}
+              onChange={handleInputChange}
+              onKeyDown={handleKeyDown}
+              placeholder="Describe what you want to design... (type / for saved styles)"
+              rows={2}
+              className="w-full resize-none rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0099ff] backdrop-blur-sm"
+              style={{
+                border: "1px solid rgba(255,255,255,0.5)",
+                background: "rgba(255,255,255,0.4)",
+                color: "#001a33",
+              }}
+            />
+          </div>
           <button
             onClick={onGenerate}
             disabled={isGenerating || !prompt.trim()}
