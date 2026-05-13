@@ -1,7 +1,7 @@
 """
 Flask application factory and configuration.
 """
-from flask import Flask, request
+from flask import Flask, request, send_from_directory
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
@@ -13,6 +13,8 @@ from datetime import timedelta
 db = SQLAlchemy()
 migrate = Migrate()
 jwt = JWTManager()
+
+UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'uploads')
 
 
 def create_app(config_name='development'):
@@ -38,6 +40,7 @@ def create_app(config_name='development'):
     app.config['GOOGLE_API_KEY'] = os.getenv('GOOGLE_API_KEY', '')
     app.config['GEMINI_MODEL'] = os.getenv('GEMINI_MODEL', 'gemini-1.5-flash')
     app.config['HF_TOKEN'] = os.getenv('HF_TOKEN', '')
+    app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
     
     # Enable CORS with proper configuration
     cors_config = {
@@ -62,6 +65,7 @@ def create_app(config_name='development'):
     from app.routes.body_profiles import body_profiles_bp
     from app.routes.designs import designs_bp
     from app.routes.ai import ai_bp
+    from app.routes.conversations import conversations_bp
     
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
     app.register_blueprint(accounts_bp, url_prefix='/api/accounts')
@@ -70,7 +74,17 @@ def create_app(config_name='development'):
     app.register_blueprint(body_profiles_bp, url_prefix='/api/body-profiles')
     app.register_blueprint(designs_bp, url_prefix='/api/designs')
     app.register_blueprint(ai_bp, url_prefix='/api/ai')
+    app.register_blueprint(conversations_bp)
     
+    # Ensure upload directories exist
+    os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+    os.makedirs(os.path.join(UPLOAD_FOLDER, 'designs'), exist_ok=True)
+
+    # Serve uploaded files
+    @app.route('/api/uploads/<path:filename>', methods=['GET'])
+    def uploaded_file(filename):
+        return send_from_directory(UPLOAD_FOLDER, filename)
+
     # Health check endpoint
     @app.route('/api/health', methods=['GET'])
     def health():

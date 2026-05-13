@@ -1,26 +1,10 @@
 import { useEffect, useState } from "react";
-import { gownDesignsAPI } from "../utils/api.js";
-
-const fallbackChats = [
-  {
-    id: "1",
-    name: "Emerald velvet with off-shoulder",
-    created_at: new Date(Date.now() - 86400000).toISOString(),
-  },
-  {
-    id: "2",
-    name: "Blush lace A-line with train",
-    created_at: new Date(Date.now() - 2 * 86400000).toISOString(),
-  },
-  {
-    id: "3",
-    name: "Minimal silk slip dress",
-    created_at: new Date(Date.now() - 3 * 86400000).toISOString(),
-  },
-];
+import { useNavigate } from "react-router-dom";
+import { conversationsAPI } from "../utils/api.js";
 
 export default function RecentChats() {
   const [chats, setChats] = useState([]);
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetchChats();
@@ -28,18 +12,30 @@ export default function RecentChats() {
 
   const fetchChats = async () => {
     try {
-      const response = await gownDesignsAPI.getAll();
-      const designs = response.designs || [];
+      const response = await conversationsAPI.list();
+      setChats(response.conversations || []);
+    } catch (error) {
+      console.error("Failed to fetch conversations:", error);
+    }
+  };
 
-      if (designs.length > 0) {
-        setChats(designs);
-      } else {
-        setChats(fallbackChats);
+  const openConversation = async (convId) => {
+    try {
+      const res = await conversationsAPI.get(convId);
+      const conv = res;
+      if (conv.messages?.length) {
+        const lastAssistant = [...conv.messages].reverse().find((m) => m.sender_role === "assistant");
+        const lastUser = [...conv.messages].reverse().find((m) => m.sender_role === "user");
+        navigate("/studio", {
+          state: {
+            conversationId: conv.id,
+            prompt: lastUser?.content || conv.title,
+            imageUrl: lastAssistant?.image_url || null,
+          },
+        });
       }
     } catch (error) {
-      console.error("Failed to fetch designs:", error);
-      // Fallback to demo data if not authenticated or API fails
-      setChats(fallbackChats);
+      console.error("Failed to load conversation:", error);
     }
   };
 
@@ -81,50 +77,38 @@ export default function RecentChats() {
             chats.map((c) => (
               <article
                 key={c.id}
-                className="rounded-xl border p-4 shadow-md hover:shadow-lg transition-shadow"
+                className="rounded-xl border p-4 shadow-md hover:shadow-lg transition-shadow cursor-pointer"
                 style={{
                   background: "rgba(255,255,255,0.7)",
                   border: "1px solid rgba(255,255,255,0.5)",
                   backdropFilter: "blur(10px)",
                 }}
+                onClick={() => openConversation(c.id)}
               >
-                <div
-                  className="text-xs font-medium"
-                  style={{ color: "#0066cc" }}
-                >
+                <div className="text-xs font-medium" style={{ color: "#0066cc" }}>
                   {new Date(c.created_at).toLocaleDateString()} ·{" "}
                   {new Date(c.created_at).toLocaleTimeString([], {
                     hour: "2-digit",
                     minute: "2-digit",
                   })}
                 </div>
-                <div
-                  className="mt-2 font-semibold line-clamp-2"
-                  style={{ color: "#001a33" }}
-                >
-                  {c.name}
+                <div className="mt-2 font-semibold line-clamp-2" style={{ color: "#001a33" }}>
+                  {c.title || "Design Session"}
+                </div>
+                <div className="mt-1 text-xs" style={{ color: "#004999" }}>
+                  {c.message_count || 0} messages
                 </div>
                 <div className="mt-4 flex gap-2">
                   <button
                     className="text-xs px-3 py-1.5 rounded-md font-medium transition-all hover:opacity-90"
                     style={{
-                      background:
-                        "linear-gradient(90deg,#0066cc 0%,#0099ff 100%)",
+                      background: "linear-gradient(90deg,#0066cc 0%,#0099ff 100%)",
                       color: "#ffffff",
                       boxShadow: "0 4px 12px rgba(0,102,204,0.2)",
                     }}
+                    onClick={(e) => { e.stopPropagation(); openConversation(c.id); }}
                   >
                     Open
-                  </button>
-                  <button
-                    className="text-xs px-3 py-1.5 rounded-md font-medium transition-all hover:opacity-90"
-                    style={{
-                      background: "rgba(255,255,255,0.5)",
-                      border: "1px solid rgba(255,255,255,0.6)",
-                      color: "#001a33",
-                    }}
-                  >
-                    Duplicate
                   </button>
                 </div>
               </article>

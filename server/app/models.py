@@ -91,6 +91,7 @@ class GownDesign(db.Model):
     # SVG data
     svg = db.Column(db.Text, nullable=True)
     thumbnail = db.Column(db.LargeBinary, nullable=True)
+    image_url = db.Column(db.String(512), nullable=True)
     
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -114,6 +115,8 @@ class GownDesign(db.Model):
             'updated_at': self.updated_at.isoformat()
         }
         
+        result['image_url'] = self.image_url
+
         # Include large fields if requested (e.g., for detail views)
         if include_large_fields:
             result['svg'] = self.svg
@@ -137,8 +140,8 @@ class Conversation(db.Model):
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
     
-    def to_dict(self):
-        return {
+    def to_dict(self, include_messages=False):
+        result = {
             'id': self.id,
             'account_id': self.account_id,
             'title': self.title,
@@ -146,6 +149,9 @@ class Conversation(db.Model):
             'created_at': self.created_at.isoformat(),
             'updated_at': self.updated_at.isoformat()
         }
+        if include_messages:
+            result['messages'] = [m.to_dict() for m in self.messages]
+        return result
 
 
 class ChatMessage(db.Model):
@@ -154,8 +160,9 @@ class ChatMessage(db.Model):
     
     id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     conversation_id = db.Column(db.String(36), db.ForeignKey('conversations.id'), nullable=False)
-    sender_role = db.Column(db.String(20), nullable=False)  # 'sender' or 'assistant'
+    sender_role = db.Column(db.String(20), nullable=False)  # 'user' or 'assistant'
     content = db.Column(db.Text, nullable=False)
+    image_url = db.Column(db.String(512), nullable=True)
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     
     def to_dict(self):
@@ -164,6 +171,7 @@ class ChatMessage(db.Model):
             'conversation_id': self.conversation_id,
             'sender_role': self.sender_role,
             'content': self.content,
+            'image_url': self.image_url,
             'created_at': self.created_at.isoformat()
         }
 

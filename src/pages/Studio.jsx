@@ -69,6 +69,20 @@ export default function Studio() {
       } catch (err) {
         console.debug("replaceState ignored:", err);
       }
+      return;
+    }
+
+    const convState = location?.state;
+    if (convState?.prompt) {
+      setPrompt(convState.prompt);
+      if (convState.imageUrl) {
+        setAiImageUrl(convState.imageUrl);
+      }
+      try {
+        window.history.replaceState({}, document.title);
+      } catch (err) {
+        console.debug("replaceState ignored:", err);
+      }
     }
   }, [location]);
 

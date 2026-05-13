@@ -212,4 +212,15 @@ export const aiAPI = {
     }),
 };
 
+export const conversationsAPI = {
+  list: () => apiRequest("/conversations"),
+
+  get: (id) => apiRequest(`/conversations/${id}`),
+
+  delete: (id) =>
+    apiRequest(`/conversations/${id}`, {
+      method: "DELETE",
+    }),
+};
+
 export default apiRequest;
