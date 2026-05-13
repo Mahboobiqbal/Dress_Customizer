@@ -39,7 +39,12 @@ const ProtectedRoute = ({ children }) => {
         }}
       >
         <Sidebar />
-        <div className="flex-1 min-h-0 flex flex-col overflow-hidden">{children}</div>
+        <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+          {children}
+          <div className="flex justify-center py-0.5">
+            <span className="text-[9px] tracking-widest select-none font-medium" style={{ color: "rgba(0,102,204,0.25)" }}>MenteE</span>
+          </div>
+        </div>
       </div>
     </div>
   );

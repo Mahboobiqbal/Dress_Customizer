@@ -7,6 +7,7 @@ export default function DesignDetail() {
   const { id } = useParams();
   const [design, setDesign] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [showDelete, setShowDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const navigate = useNavigate();
 
@@ -19,263 +20,131 @@ export default function DesignDetail() {
         const res = await gownDesignsAPI.getById(id);
         if (mounted) setDesign(res);
       } catch (err) {
-        console.error("Failed to load design", err);
         toast.error("Could not load design");
       } finally {
         if (mounted) setLoading(false);
       }
     })();
-    return () => {
-      mounted = false;
-    };
+    return () => { mounted = false; };
   }, [id]);
 
   const handleDelete = async () => {
-    const ok = window.confirm("Delete this design? This cannot be undone.");
-    if (!ok) return;
     try {
       setDeleting(true);
       await gownDesignsAPI.delete(id);
       toast.success("Design deleted");
       navigate("/designs");
-    } catch (err) {
-      console.error("Delete failed", err);
+    } catch {
       toast.error("Delete failed");
     } finally {
       setDeleting(false);
+      setShowDelete(false);
     }
   };
 
-  const renderSkeleton = () => (
-    <div className="mt-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
-      <div className="lg:col-span-2 space-y-4">
-        <div
-          className="h-10 w-2/3 rounded-md animate-pulse"
-          style={{ background: "rgba(255,255,255,0.5)" }}
-        />
-        <div
-          className="h-[480px] rounded-xl border animate-pulse"
-          style={{
-            background: "rgba(255,255,255,0.4)",
-            border: "1px solid rgba(255,255,255,0.55)",
-          }}
-        />
-      </div>
-      <div className="space-y-4">
-        <div
-          className="h-10 w-1/2 rounded-md animate-pulse"
-          style={{ background: "rgba(255,255,255,0.5)" }}
-        />
-        <div
-          className="h-[480px] rounded-xl border animate-pulse"
-          style={{
-            background: "rgba(255,255,255,0.4)",
-            border: "1px solid rgba(255,255,255,0.55)",
-          }}
-        />
-      </div>
-    </div>
-  );
+  const previewUrl = design?.image_url || design?.thumbnail || null;
 
-  const renderNotFound = () => (
-    <div className="mt-16 text-center">
-      <h2 className="text-xl font-semibold" style={{ color: "#0066cc" }}>
-        Design not found
-      </h2>
-      <p className="mt-2 text-sm" style={{ color: "#004999" }}>
-        It may have been removed or the link is invalid.
-      </p>
-      <button
-        onClick={() => navigate("/designs")}
-        className="mt-6 px-4 py-2 rounded-md text-sm font-medium shadow"
-        style={{
-          background: "linear-gradient(90deg,#0066cc 0%,#0099ff 100%)",
-          color: "#fff",
-        }}
-      >
-        Back to Designs
-      </button>
-    </div>
-  );
+  if (loading) {
+    return (
+      <div className="h-full overflow-y-auto flex items-center justify-center" style={{ background: "linear-gradient(180deg, rgba(135,206,235,0.95), rgba(173,216,230,0.9))" }}>
+        <div className="animate-pulse text-sm font-medium" style={{ color: "#004999" }}>Loading design...</div>
+      </div>
+    );
+  }
+
+  if (!design) {
+    return (
+      <div className="h-full overflow-y-auto flex items-center justify-center" style={{ background: "linear-gradient(180deg, rgba(135,206,235,0.95), rgba(173,216,230,0.9))" }}>
+        <div className="text-center">
+          <div className="text-5xl mb-4 opacity-20">&#x1F50D;</div>
+          <h2 className="text-lg font-bold" style={{ color: "#0066cc" }}>Design not found</h2>
+          <p className="text-sm mt-1 mb-6" style={{ color: "#004999" }}>It may have been removed or the link is invalid.</p>
+          <button onClick={() => navigate("/designs")} className="text-sm px-5 py-2.5 rounded-xl font-bold shadow-md" style={{ background: "linear-gradient(135deg,#0055bb 0%,#0099ff 100%)", color: "#fff", border: "none" }}>Back to Designs</button>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div
-      className="min-h-screen"
-      style={{
-        background:
-          "linear-gradient(180deg, rgba(135,206,235,0.95), rgba(173,216,230,0.9))",
-        color: "#001a33",
-      }}
-    >
-      <main className="px-4 sm:px-6 lg:px-8 py-10">
-        {/* Breadcrumb & Actions */}
-        <div className="flex flex-col gap-4">
-          <nav
-            className="text-xs font-medium flex items-center gap-2"
-            style={{ color: "#004999" }}
-          >
-            <button
-              onClick={() => navigate("/designs")}
-              className="hover:underline"
-              style={{ color: "#0066cc" }}
-            >
-              Designs
-            </button>
-            <span>/</span>
-            <span style={{ color: "#001a33" }}>{design?.name || "..."}</span>
-          </nav>
-          {loading ? null : design ? (
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div>
-                <h1 className="text-2xl font-semibold font-['Playfair_Display']">
-                  {design.name}
-                </h1>
-                <div className="text-sm mt-1" style={{ color: "#0066cc" }}>
-                  {new Date(design.created_at).toLocaleString()}
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => navigate(-1)}
-                  className="px-3 py-1.5 rounded-md text-sm font-medium transition"
-                  style={{
-                    background: "rgba(255,255,255,0.6)",
-                    border: "1px solid rgba(0,102,204,0.15)",
-                  }}
-                >
-                  Back
-                </button>
-                <button
-                  onClick={() => navigate("/studio", { state: { design } })}
-                  className="px-3 py-1.5 rounded-md text-sm font-medium transition"
-                  style={{
-                    background:
-                      "linear-gradient(90deg,#0066cc 0%,#0099ff 100%)",
-                    color: "#fff",
-                  }}
-                >
-                  Edit
-                </button>
-                <button
-                  onClick={handleDelete}
-                  disabled={deleting}
-                  className="px-3 py-1.5 rounded-md text-sm font-medium transition"
-                  style={{
-                    background: "rgba(255,255,255,0.4)",
-                    color: "#b91c1c",
-                    border: "1px solid rgba(185,28,28,0.25)",
-                    opacity: deleting ? 0.7 : 1,
-                  }}
-                >
-                  {deleting ? "Deleting…" : "Delete"}
-                </button>
-              </div>
+    <div className="h-full overflow-y-auto" style={{ background: "linear-gradient(180deg, rgba(135,206,235,0.95), rgba(173,216,230,0.9))", color: "#001a33" }}>
+      <div className="mx-auto max-w-5xl px-4 py-8">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <div className="flex items-center gap-2 text-xs mb-1" style={{ color: "#0066cc" }}>
+              <button onClick={() => navigate("/designs")} className="hover:underline">Designs</button>
+              <span>/</span>
+              <span className="font-medium" style={{ color: "#001a33" }}>{design.name}</span>
             </div>
-          ) : null}
+            <h1 className="text-2xl font-bold tracking-tight">{design.name}</h1>
+            <p className="text-sm mt-1" style={{ color: "#0066cc" }}>{new Date(design.created_at).toLocaleString()}</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <button onClick={() => navigate("/studio", { state: { design } })} className="text-sm px-4 py-2 rounded-xl font-bold shadow-md transition-all hover:scale-[1.02]" style={{ background: "linear-gradient(135deg,#0055bb 0%,#0099ff 100%)", color: "#fff", border: "none" }}>Edit in Studio</button>
+            <button onClick={() => setShowDelete(true)} className="text-sm px-3 py-2 rounded-xl font-medium" style={{ color: "#E11D48", border: "1px solid rgba(225,29,72,0.2)" }}>&#x2715;</button>
+          </div>
         </div>
 
-        {/* Main content */}
-        {loading ? (
-          renderSkeleton()
-        ) : !design ? (
-          renderNotFound()
-        ) : (
-          <div className="mt-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Preview */}
-            <section className="lg:col-span-2 space-y-6">
-              <div
-                className="rounded-xl border shadow-sm overflow-hidden"
-                style={{
-                  background:
-                    "linear-gradient(140deg,rgba(255,255,255,0.85),rgba(255,255,255,0.65))",
-                  border: "1px solid rgba(255,255,255,0.55)",
-                  backdropFilter: "blur(10px)",
-                  minHeight: 480,
-                }}
-              >
-                <div className="p-4">
-                  {design.svg ? (
-                    <div
-                      className="max-w-full"
-                      dangerouslySetInnerHTML={{ __html: design.svg }}
-                    />
-                  ) : design.thumbnail ? (
-                    <img
-                      src={design.thumbnail}
-                      alt={design.name}
-                      className="rounded-md max-w-full h-auto"
-                      style={{ objectFit: "contain" }}
-                    />
-                  ) : (
-                    <div
-                      className="text-center py-24 text-sm"
-                      style={{ color: "#004999" }}
-                    >
-                      No preview available
-                    </div>
-                  )}
-                </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2">
+            <div className="rounded-xl border shadow-md overflow-hidden" style={{ background: "rgba(255,255,255,0.85)", border: "1px solid rgba(255,255,255,0.4)", backdropFilter: "blur(10px)", minHeight: 400 }}>
+              <div className="flex items-center justify-center min-h-[400px] p-4">
+                {previewUrl ? (
+                  <img src={previewUrl} alt={design.name} className="max-w-full max-h-[600px] rounded-lg object-contain" />
+                ) : design.svg ? (
+                  <div className="max-w-full" dangerouslySetInnerHTML={{ __html: design.svg }} />
+                ) : (
+                  <div className="text-center py-16 text-sm" style={{ color: "#004999" }}>No preview available</div>
+                )}
               </div>
-
-              {design.notes && (
-                <div
-                  className="rounded-lg border p-4 text-sm"
-                  style={{
-                    background: "rgba(255,255,255,0.55)",
-                    border: "1px solid rgba(255,255,255,0.5)",
-                    backdropFilter: "blur(8px)",
-                  }}
-                >
-                  <h3 className="font-medium mb-2" style={{ color: "#0066cc" }}>
-                    Designer Notes
-                  </h3>
-                  <p style={{ color: "#004999", lineHeight: 1.5 }}>
-                    {design.notes}
-                  </p>
-                </div>
-              )}
-            </section>
-
-            {/* Sidebar */}
-            <aside className="space-y-6">
-              <div
-                className="rounded-xl border p-5 shadow-sm"
-                style={{
-                  background:
-                    "linear-gradient(150deg,rgba(255,255,255,0.88),rgba(255,255,255,0.62))",
-                  border: "1px solid rgba(255,255,255,0.55)",
-                  backdropFilter: "blur(12px)",
-                }}
-              >
-                <h3
-                  className="text-sm font-semibold tracking-wide mb-3"
-                  style={{ color: "#0066cc" }}
-                >
-                  Parameters
-                </h3>
-                <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
-                  <dt style={{ color: "#004999" }}>Color</dt>
-                  <dd style={{ color: "#001a33" }}>{design.color || "—"}</dd>
-                  <dt style={{ color: "#004999" }}>Pattern</dt>
-                  <dd style={{ color: "#001a33" }}>{design.pattern || "—"}</dd>
-                  <dt style={{ color: "#004999" }}>Neckline</dt>
-                  <dd style={{ color: "#001a33" }}>{design.neckline || "—"}</dd>
-                  <dt style={{ color: "#004999" }}>Sleeve length</dt>
-                  <dd style={{ color: "#001a33" }}>
-                    {design.sleeve_length || "—"}
-                  </dd>
-                  <dt style={{ color: "#004999" }}>Train length</dt>
-                  <dd style={{ color: "#001a33" }}>
-                    {design.train_length || "—"}
-                  </dd>
-                  <dt style={{ color: "#004999" }}>Texture</dt>
-                  <dd style={{ color: "#001a33" }}>{design.texture || "—"}</dd>
-                </dl>
+            </div>
+            {design.prompt && (
+              <div className="mt-4 rounded-xl border p-4 shadow-sm" style={{ background: "rgba(255,255,255,0.85)", border: "1px solid rgba(255,255,255,0.4)", backdropFilter: "blur(10px)" }}>
+                <h3 className="text-xs font-bold uppercase tracking-wider mb-2" style={{ color: "#0066cc" }}>Prompt</h3>
+                <p className="text-sm" style={{ color: "#001a33" }}>{design.prompt}</p>
               </div>
-            </aside>
+            )}
           </div>
-        )}
-      </main>
+
+          <div className="space-y-4">
+            <div className="rounded-xl border p-5 shadow-sm" style={{ background: "rgba(255,255,255,0.85)", border: "1px solid rgba(255,255,255,0.4)", backdropFilter: "blur(10px)" }}>
+              <h3 className="text-xs font-bold uppercase tracking-wider mb-4" style={{ color: "#0066cc" }}>Parameters</h3>
+              <div className="space-y-3 text-sm">
+                {[
+                  { label: "Color", value: design.color, color: true },
+                  { label: "Pattern", value: design.pattern },
+                  { label: "Fabric", value: design.texture },
+                  { label: "Neckline", value: design.neckline },
+                  { label: "Sleeve Length", value: design.sleeve_length },
+                  { label: "Train Length", value: design.train_length },
+                  { label: "Skirt Volume", value: design.skirt_volume },
+                  { label: "Texture Intensity", value: design.texture_intensity },
+                ].map((p) => (
+                  <div key={p.label} className="flex items-center justify-between">
+                    <span className="text-xs" style={{ color: "#004999" }}>{p.label}</span>
+                    <span className="text-xs font-medium flex items-center gap-1.5" style={{ color: "#001a33" }}>
+                      {p.color && <span className="w-3 h-3 rounded-full border border-white/50 inline-block" style={{ background: p.value }} />}
+                      {p.value ?? "—"}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {showDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm" onClick={() => setShowDelete(false)}>
+          <div className="rounded-xl border shadow-xl p-5 w-full max-w-sm mx-4" style={{ background: "rgba(255,255,255,0.95)", border: "1px solid rgba(255,255,255,0.5)" }} onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-sm font-bold mb-2" style={{ color: "#001a33" }}>Delete design?</h3>
+            <p className="text-xs mb-4" style={{ color: "#004999" }}>This action cannot be undone.</p>
+            <div className="flex gap-2">
+              <button onClick={() => setShowDelete(false)} className="flex-1 text-xs px-3 py-2 rounded-lg font-medium" style={{ background: "rgba(255,255,255,0.5)", color: "#0066cc", border: "1px solid rgba(0,102,204,0.2)" }}>Cancel</button>
+              <button onClick={handleDelete} disabled={deleting} className="flex-1 text-xs px-3 py-2 rounded-lg font-medium text-white" style={{ background: deleting ? "rgba(225,29,72,0.5)" : "#E11D48", border: "none" }}>{deleting ? "Deleting..." : "Delete"}</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
