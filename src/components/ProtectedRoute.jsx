@@ -26,23 +26,20 @@ const ProtectedRoute = ({ children }) => {
 
   // Render the protected component inside global layout with header, sidebar and main content
   return (
-    <div className="min-h-screen w-full flex flex-col">
+    <div className="h-screen w-full flex flex-col overflow-hidden">
       {/* Header spans full width at top */}
       <Header />
 
       {/* Sidebar and main content below header */}
       <div
-        className="flex flex-1 w-full"
+        className="flex flex-1 w-full min-h-0"
         style={{
           background:
             "linear-gradient(180deg, rgba(135,206,235,0.95), rgba(173,216,230,0.9))",
         }}
       >
-        {/* grid: aside + main */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 w-full">
-          <Sidebar />
-          <div className="lg:col-span-10">{children}</div>
-        </div>
+        <Sidebar />
+        <div className="flex-1 min-h-0 flex flex-col overflow-hidden">{children}</div>
       </div>
     </div>
   );

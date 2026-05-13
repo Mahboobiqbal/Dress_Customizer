@@ -1,257 +1,332 @@
 import { useRef, useState, useEffect } from "react";
-import { useLocation } from "react-router-dom";
-import PromptBar from "../components/PromptBar.jsx";
+import { useLocation, useParams } from "react-router-dom";
 import CustomizerPanel from "../components/CustomizerPanel.jsx";
-import Preview from "../components/Preview.jsx";
-import VariantsTray from "../components/VariantsTray.jsx";
-import { gownDesignsAPI, aiAPI } from "../utils/api.js";
+import { conversationsAPI, aiAPI } from "../utils/api.js";
 import toast from "react-hot-toast";
 
 export default function Studio() {
   const location = useLocation();
+  const { convId } = useParams();
   const [prompt, setPrompt] = useState("");
-  const [params, setParams] = useState({
-    color: "#EC4899",
-    pattern: "solid",
-    sleeveLength: 70,
-    neckline: "v-neck",
-    trainLength: 50,
-    texture: "satin",
-    textureIntensity: 40,
-    skirtVolume: 60,
-    prompt: "",
-  });
-  const [variants, setVariants] = useState([]);
-  const [editingId, setEditingId] = useState(null);
+  const [messages, setMessages] = useState([]);
+  const [conversationId, setConversationId] = useState(null);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [aiImageUrl, setAiImageUrl] = useState(null);
   const [models, setModels] = useState([]);
   const [selectedModel, setSelectedModel] = useState("pollinations");
-  const previewRef = useRef(null);
+  const [showCustomize, setShowCustomize] = useState(false);
+  const [params, setParams] = useState({
+    color: "#EC4899", pattern: "solid", sleeveLength: 70,
+    neckline: "v-neck", trainLength: 50, texture: "satin",
+    textureIntensity: 40, skirtVolume: 60, prompt: "",
+  });
+  const chatEndRef = useRef(null);
 
   useEffect(() => {
     aiAPI.listModels().then((res) => {
       if (res.models?.length) {
         setModels(res.models);
-        const defaultModel = res.models.find((m) => m.id === 'pollinations')
+        const def = res.models.find((m) => m.id === "pollinations")
           || res.models.find((m) => m.key_configured && !m.requires_key)
           || res.models.find((m) => m.key_configured)
           || res.models[0];
-        setSelectedModel(defaultModel.id);
+        setSelectedModel(def.id);
       }
     }).catch(() => {
       setModels([
+        { id: "pollinations", name: "Pollinations.ai", provider: "Pollinations.ai", requires_key: false, key_configured: true },
         { id: "subnp-turbo", name: "SubNP (turbo)", provider: "SubNP", requires_key: false, key_configured: true },
-        { id: "subnp-flux", name: "SubNP (flux)", provider: "SubNP", requires_key: false, key_configured: true },
-        { id: "subnp-magic", name: "SubNP (magic)", provider: "SubNP", requires_key: false, key_configured: true },
       ]);
     });
   }, []);
 
   useEffect(() => {
-    const incoming = location?.state?.design;
-    if (incoming) {
+    const state = location.state;
+
+    if (state?.design) {
+      const d = state.design;
       setParams((p) => ({
-        ...p,
-        color: incoming.color || p.color,
-        pattern: incoming.pattern || p.pattern,
-        sleeveLength: incoming.sleeve_length ?? p.sleeveLength,
-        neckline: incoming.neckline || p.neckline,
-        trainLength: incoming.train_length ?? p.trainLength,
-        texture: incoming.texture || p.texture,
-        textureIntensity: incoming.texture_intensity ?? p.textureIntensity,
-        skirtVolume: incoming.skirt_volume ?? p.skirtVolume,
+        ...p, color: d.color || p.color, pattern: d.pattern || p.pattern,
+        sleeveLength: d.sleeve_length ?? p.sleeveLength, neckline: d.neckline || p.neckline,
+        trainLength: d.train_length ?? p.trainLength, texture: d.texture || p.texture,
+        textureIntensity: d.texture_intensity ?? p.textureIntensity, skirtVolume: d.skirt_volume ?? p.skirtVolume,
       }));
-      setPrompt(incoming.name || "");
-      if (incoming.id) setEditingId(incoming.id);
-      try {
-        window.history.replaceState({}, document.title);
-      } catch (err) {
-        console.debug("replaceState ignored:", err);
-      }
+      setPrompt(d.name || "");
+      try { window.history.replaceState({}, document.title); } catch {}
       return;
     }
 
-    const convState = location?.state;
-    if (convState?.prompt) {
-      setPrompt(convState.prompt);
-      if (convState.imageUrl) {
-        setAiImageUrl(convState.imageUrl);
-      }
-      try {
-        window.history.replaceState({}, document.title);
-      } catch (err) {
-        console.debug("replaceState ignored:", err);
-      }
+    if (convId && convId !== conversationId) {
+      setConversationId(convId);
+      conversationsAPI.get(convId).then((res) => {
+        if (res.messages) {
+          setMessages(res.messages);
+        }
+      }).catch(() => toast.error("Failed to load conversation"));
     }
-  }, [location]);
+  }, [location, convId]);
+
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
 
   const onGenerate = async () => {
+    const text = prompt.trim() || params.prompt?.trim() || "Elegant dress";
+    if (!text) return;
+
     setIsGenerating(true);
-    const effectivePrompt = prompt.trim() || params.prompt?.trim() || "Elegant dress";
+    setPrompt("");
+
+    const userMsg = { id: "temp-" + Date.now(), sender_role: "user", content: text, created_at: new Date().toISOString() };
+    setMessages((prev) => [...prev, userMsg]);
+
     try {
-      const response = await aiAPI.generateImage(effectivePrompt, {
-        color: params.color,
-        pattern: params.pattern,
-        neckline: params.neckline,
-        sleeve_length: params.sleeveLength,
-        train_length: params.trainLength,
-        texture: params.texture,
-        texture_intensity: params.textureIntensity,
+      const response = await aiAPI.generateImage(text, {
+        color: params.color, pattern: params.pattern, neckline: params.neckline,
+        sleeve_length: params.sleeveLength, train_length: params.trainLength,
+        texture: params.texture, texture_intensity: params.textureIntensity,
         skirt_volume: params.skirtVolume,
-      }, selectedModel);
+      }, selectedModel, conversationId);
 
       if (response.image) {
-        setAiImageUrl(response.image);
-        const name = prompt?.trim() || "Realistic Design";
-        setVariants((v) =>
-          [
-            {
-              id: crypto.randomUUID(),
-              name,
-              timestamp: Date.now(),
-              svg: null,
-              params,
-              thumb: response.image,
-              isAIGenerated: true,
-            },
-            ...v,
-          ].slice(0, 12),
-        );
-        toast.success("Realistic design generated!");
+        if (response.conversation_id && !conversationId) {
+          setConversationId(response.conversation_id);
+        }
+        const aiMsg = {
+          id: "msg-" + Date.now(), sender_role: "assistant",
+          content: "Generated design", image_url: response.image,
+          created_at: new Date().toISOString(),
+        };
+        setMessages((prev) => [...prev, aiMsg]);
+        toast.success("Design generated!");
       } else {
-        toast.error(response.error || "Image generation failed");
+        toast.error(response.error || "Generation failed");
+        setMessages((prev) => prev.filter((m) => m.id !== userMsg.id));
       }
     } catch (error) {
-      console.error("AI generation error:", error);
       toast.error("Generation failed: " + (error.message || "Unknown error"));
+      setMessages((prev) => prev.filter((m) => m.id !== userMsg.id));
     }
     setIsGenerating(false);
   };
 
-  const addVariant = async () => {
-    const currentImage = aiImageUrl;
-    if (!currentImage) {
-      toast.error("Generate a design first before saving.");
-      return;
-    }
+  const resetChat = () => {
+    setMessages([]);
+    setConversationId(null);
+    setPrompt("");
+  };
 
-    try {
-      const name = prompt?.trim() || "Design";
-
-      const designData = {
-        name,
-        prompt: prompt || "",
-        color: params.color,
-        pattern: params.pattern,
-        sleeve_length: params.sleeveLength,
-        neckline: params.neckline,
-        train_length: params.trainLength,
-        texture: params.texture,
-        texture_intensity: params.textureIntensity,
-        skirt_volume: params.skirtVolume,
-        image_url: currentImage,
-      };
-
-      let result;
-      if (editingId) {
-        result = await gownDesignsAPI.update(editingId, designData);
-        toast.success(`Design "${name}" updated`);
-      } else {
-        result = await gownDesignsAPI.create(designData);
-        toast.success(`Design "${name}" saved to your library!`);
-      }
-
-      setVariants((v) => [{
-        id: result.design.id,
-        name,
-        timestamp: Date.now(),
-        params,
-        thumb: currentImage,
-        isAIGenerated: true,
-      }, ...v].slice(0, 12));
-
-      if (editingId) setEditingId(null);
-    } catch (error) {
-      console.error("Failed to save design:", error);
-      toast.error("Failed to save design. Please try again.");
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      onGenerate();
     }
   };
 
-  const loadVariant = (v) => {
-    setParams(v.params);
-    setPrompt(v.name === "Design" ? "" : v.name);
-    if (v.thumb) {
-      setAiImageUrl(v.thumb);
-    }
-  };
-
-  const downloadImage = (format) => {
-    const url = aiImageUrl;
-    if (!url) {
-      toast.error("Generate a design first before exporting.");
-      return;
-    }
+  const downloadImage = (url) => {
+    if (!url) return;
     const a = document.createElement("a");
     a.href = url;
-    a.download = `dress-design-${Date.now()}.${format}`;
+    a.download = `design-${Date.now()}.png`;
     a.click();
   };
 
-  const exportSvg = () => downloadImage("jpg");
-  const exportPng = () => downloadImage("png");
-
   return (
     <div
-      className="min-h-screen"
+      className="h-full flex flex-col overflow-hidden"
       style={{
-        background:
-          "linear-gradient(180deg, #87CEEB 0%, #87CEEB 30%, #ADD8E6 70%, #E0F6FF 100%)",
+        background: "linear-gradient(180deg, #87CEEB 0%, #87CEEB 30%, #ADD8E6 70%, #E0F6FF 100%)",
         color: "#001a33",
       }}
     >
-      <main className="mx-auto max-w-7xl px-4 pb-8">
-        <div className="mt-6 grid grid-cols-1 lg:grid-cols-12 lg:gap-6">
-          <div className="lg:col-span-12">
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-              <section className="lg:col-span-7 order-2 lg:order-1 flex flex-col gap-4">
-                <CustomizerPanel
-                  params={params}
-                  setParams={setParams}
-                  onSaveVariant={addVariant}
-                  isGenerating={isGenerating}
-                  onGenerate={onGenerate}
-                  models={models}
-                  selectedModel={selectedModel}
-                  onModelChange={setSelectedModel}
-                />
-                <PromptBar
-                  prompt={prompt}
-                  onChange={setPrompt}
-                  onGenerate={onGenerate}
-                  isGenerating={isGenerating}
-                />
-              </section>
-
-              <section className="lg:col-span-5 order-1 lg:order-2 flex lg:justify-end justify-center">
-                <div className="w-full max-w-lg">
-                  <Preview
-                    ref={previewRef}
-                    isGenerating={isGenerating}
-                    onExportSvg={exportSvg}
-                    onExportPng={exportPng}
-                    aiImageUrl={aiImageUrl}
-                  />
-                </div>
-              </section>
-            </div>
-
-            <VariantsTray variants={variants} onSelect={loadVariant} />
-          </div>
+      <div className="flex items-center justify-between px-4 py-3 border-b border-[#0066cc]/20 shrink-0">
+        <h1 className="text-lg font-bold uppercase tracking-widest text-[#0066cc]">
+          {conversationId ? "Chat" : "New Chat"}
+        </h1>
+        <div className="flex items-center gap-3">
+          {conversationId && (
+            <button
+              onClick={resetChat}
+              className="text-xs px-3 py-1.5 rounded-lg font-medium transition-all shrink-0"
+              style={{
+                background: "linear-gradient(90deg,#0066cc,#0099ff)",
+                color: "#fff",
+                border: "none",
+              }}
+            >
+              + New Chat
+            </button>
+          )}
+          <select
+            value={selectedModel}
+            onChange={(e) => setSelectedModel(e.target.value)}
+            className="text-xs rounded-lg border px-2 py-1.5 backdrop-blur-md shadow-sm focus:outline-none focus:ring-2 focus:ring-[#0099ff] cursor-pointer"
+            style={{ border: "1px solid rgba(255,255,255,0.7)", background: "rgba(255,255,255,0.5)", color: "#001a33" }}
+          >
+            {models.map((m) => (
+              <option key={m.id} value={m.id} disabled={m.requires_key && !m.key_configured}>
+                {m.name}{m.requires_key && !m.key_configured ? " (no key)" : ""}
+              </option>
+            ))}
+          </select>
+          <button
+            onClick={() => setShowCustomize(!showCustomize)}
+            className="text-xs px-3 py-1.5 rounded-lg font-medium transition-all shrink-0"
+            style={{
+              background: showCustomize ? "linear-gradient(90deg,#0066cc,#0099ff)" : "rgba(255,255,255,0.5)",
+              color: showCustomize ? "#fff" : "#0066cc",
+              border: "1px solid rgba(255,255,255,0.6)",
+            }}
+          >
+            Customize
+          </button>
         </div>
-      </main>
+      </div>
+
+      <div
+        className={`fixed top-0 right-0 z-50 h-full w-full max-w-md bg-white/90 backdrop-blur-xl shadow-2xl border-l border-[#0066cc]/20 transform transition-transform duration-300 overflow-y-auto ${
+          showCustomize ? "translate-x-0" : "translate-x-full"
+        }`}
+      >
+        <div className="sticky top-0 z-10 flex items-center justify-between px-4 py-3 border-b border-[#0066cc]/20 bg-white/80 backdrop-blur-sm">
+          <h2 className="text-sm font-bold uppercase tracking-wider text-[#0066cc]">Customize</h2>
+          <button
+            onClick={() => setShowCustomize(false)}
+            className="text-xs px-3 py-1.5 rounded-lg font-medium hover:bg-white/80"
+            style={{ color: "#0066cc", border: "1px solid rgba(0,102,204,0.2)" }}
+          >
+            Close
+          </button>
+        </div>
+        <div className="p-4">
+          <CustomizerPanel
+            params={params} setParams={setParams}
+            onSaveVariant={() => {}}
+            isGenerating={isGenerating} onGenerate={onGenerate}
+            models={models} selectedModel={selectedModel} onModelChange={setSelectedModel}
+          />
+        </div>
+      </div>
+      {showCustomize && <div className="fixed inset-0 z-40 bg-black/20" onClick={() => setShowCustomize(false)} />}
+
+      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4 min-h-0">
+        {messages.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-full text-center py-16">
+            <div className="text-4xl mb-4 opacity-30">&#x1F457;</div>
+            <p className="text-lg font-medium" style={{ color: "#0066cc" }}>Describe your design</p>
+            <p className="text-sm mt-1" style={{ color: "#004999" }}>
+              Type a prompt below to generate a fashion design
+            </p>
+          </div>
+        ) : (
+          messages.map((msg) => (
+            <div key={msg.id} className={`flex ${msg.sender_role === "user" ? "justify-end" : "justify-start"}`}>
+              <div
+                className={`max-w-[80%] rounded-xl p-3 shadow-md ${
+                  msg.sender_role === "user" ? "rounded-br-sm" : "rounded-bl-sm"
+                }`}
+                style={{
+                  background: msg.sender_role === "user"
+                    ? "linear-gradient(135deg, #0066cc, #0099ff)"
+                    : "rgba(255,255,255,0.85)",
+                  color: msg.sender_role === "user" ? "#fff" : "#001a33",
+                  border: msg.sender_role === "user" ? "none" : "1px solid rgba(255,255,255,0.5)",
+                }}
+              >
+                {msg.sender_role === "user" ? (
+                  <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                ) : (
+                  <div>
+                    {msg.image_url ? (
+                      <div className="relative group">
+                        <p className="text-xs mb-1 opacity-70">{msg.content}</p>
+                        <img
+                          src={msg.image_url}
+                          alt="Generated design"
+                          className="w-full rounded-lg object-contain"
+                          style={{ maxHeight: "400px" }}
+                        />
+                        <button
+                          onClick={() => downloadImage(msg.image_url)}
+                          className="absolute top-7 right-2 text-xs px-2 py-1 rounded bg-black/40 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          Download
+                        </button>
+                      </div>
+                    ) : (
+                      <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                    )}
+                  </div>
+                )}
+                <p className={`text-[10px] mt-1 ${msg.sender_role === "user" ? "text-white/60" : "text-[#0066cc]/50"}`}>
+                  {new Date(msg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                </p>
+              </div>
+            </div>
+          ))
+        )}
+        <div ref={chatEndRef} />
+      </div>
+
+      <div className="px-4 pb-4 pt-2 shrink-0">
+        <div
+          className="flex items-end gap-2 rounded-xl border p-3 shadow-lg backdrop-blur-xl"
+          style={{
+            border: "1px solid rgba(255,255,255,0.4)",
+            background: "rgba(255,255,255,0.6)",
+          }}
+        >
+          <textarea
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Describe what you want to design..."
+            rows={2}
+            className="flex-1 resize-none rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0099ff] backdrop-blur-sm"
+            style={{
+              border: "1px solid rgba(255,255,255,0.5)",
+              background: "rgba(255,255,255,0.4)",
+              color: "#001a33",
+            }}
+          />
+          <button
+            onClick={onGenerate}
+            disabled={isGenerating || !prompt.trim()}
+            className="inline-flex items-center gap-2 rounded-lg px-5 py-2.5 font-bold shadow-md transition-all duration-200 hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap shrink-0"
+            style={{
+              background: "linear-gradient(135deg,#0055bb 0%,#0099ff 100%)",
+              color: "#ffffff",
+              border: "none",
+            }}
+          >
+            {isGenerating ? (
+              <><Spinner className="w-4 h-4" /> Generating</>
+            ) : (
+              <><WandIcon className="w-4 h-4" /> Generate</>
+            )}
+          </button>
+        </div>
+        <p className="mt-1.5 text-[10px] text-center font-medium opacity-60" style={{ color: "#0055bb" }}>
+          Press Enter to send, Shift+Enter for new line
+        </p>
+      </div>
     </div>
   );
 }
 
+function WandIcon(props) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" {...props}>
+      <path d="m15 4 6-3-3 6m-4 2 4 4" />
+      <path d="M9 9l-5 5" />
+      <path d="M6 20l-4 4" />
+    </svg>
+  );
+}
 
+function Spinner(props) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" {...props} className="animate-spin">
+      <circle cx="12" cy="12" r="10" strokeWidth="2" fill="none" />
+    </svg>
+  );
+}

@@ -20,23 +20,7 @@ export default function RecentChats() {
   };
 
   const openConversation = async (convId) => {
-    try {
-      const res = await conversationsAPI.get(convId);
-      const conv = res;
-      if (conv.messages?.length) {
-        const lastAssistant = [...conv.messages].reverse().find((m) => m.sender_role === "assistant");
-        const lastUser = [...conv.messages].reverse().find((m) => m.sender_role === "user");
-        navigate("/studio", {
-          state: {
-            conversationId: conv.id,
-            prompt: lastUser?.content || conv.title,
-            imageUrl: lastAssistant?.image_url || null,
-          },
-        });
-      }
-    } catch (error) {
-      console.error("Failed to load conversation:", error);
-    }
+    navigate(`/studio/${convId}`);
   };
 
   return (

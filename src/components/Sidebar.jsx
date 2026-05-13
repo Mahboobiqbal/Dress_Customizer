@@ -34,7 +34,7 @@ export default function Sidebar() {
   return (
     <aside className="hidden lg:block lg:col-span-2">
       <nav
-        className="sticky top-0 border h-screen overflow-auto p-4 flex flex-col gap-3 shadow-sm"
+        className="sticky top-0 border h-full overflow-auto p-4 flex flex-col gap-3 shadow-sm"
         style={{
           border: "1px solid rgba(255,255,255,0.3)",
           background:

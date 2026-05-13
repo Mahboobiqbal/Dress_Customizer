@@ -55,11 +55,12 @@ def save_image_to_disk(image_bytes, subfolder='designs'):
     return f"{request.host_url}api/uploads/{subfolder}/{filename}"
 
 
-def ensure_conversation(account_id):
-    conv = Conversation.query.filter_by(account_id=account_id).order_by(Conversation.updated_at.desc()).first()
-    if conv:
-        return conv
-    conv = Conversation(account_id=account_id, title=prompt[:80] or "Design Session")
+def ensure_conversation(account_id, conv_id=None, prompt_text=""):
+    if conv_id:
+        conv = Conversation.query.filter_by(id=conv_id, account_id=account_id).first()
+        if conv:
+            return conv
+    conv = Conversation(account_id=account_id, title=prompt_text[:80] or "Design Session")
     db.session.add(conv)
     db.session.commit()
     return conv
@@ -168,6 +169,7 @@ def generate_image():
         prompt = data.get('prompt', '')
         params = data.get('params', {})
         model = data.get('model', 'pollinations')
+        conv_id = data.get('conversation_id')
 
         # Generate the image
         if model == 'gemini-enhanced':
@@ -189,7 +191,7 @@ def generate_image():
         image_path = save_image_to_disk(image_bytes)
 
         # Save to conversation
-        conv = ensure_conversation(account_id)
+        conv = ensure_conversation(account_id, conv_id, prompt)
         add_chat_message(conv.id, 'user', prompt)
         add_chat_message(conv.id, 'assistant', 'Generated design', image_url=image_path)
         conv.updated_at = datetime.utcnow()

@@ -30,6 +30,14 @@ export default function App() {
           }
         />
         <Route
+          path="/studio/:convId"
+          element={
+            <ProtectedRoute>
+              <Studio />
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/profile"
           element={
             <ProtectedRoute>
