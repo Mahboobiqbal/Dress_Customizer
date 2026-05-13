@@ -197,10 +197,12 @@ export const profilesAPI = {
 };
 
 export const aiAPI = {
-  generateImage: (prompt, params) =>
+  listModels: () => apiRequest("/ai/models"),
+
+  generateImage: (prompt, params, model) =>
     apiRequest("/ai/generate-image", {
       method: "POST",
-      body: JSON.stringify({ prompt, params }),
+      body: JSON.stringify({ prompt, params, model }),
     }),
 
   generateImageText: (prompt) =>

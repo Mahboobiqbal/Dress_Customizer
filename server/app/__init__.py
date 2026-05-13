@@ -35,7 +35,9 @@ def create_app(config_name='development'):
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     app.config['JWT_SECRET_KEY'] = os.getenv('JWT_SECRET_KEY', 'your-secret-key-change-in-production')
     app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(days=30)
-    app.config['GOOGLE_API_KEY'] = os.getenv('GOOGLE_API_KEY', '')  # Set via environment variable
+    app.config['GOOGLE_API_KEY'] = os.getenv('GOOGLE_API_KEY', '')
+    app.config['GEMINI_MODEL'] = os.getenv('GEMINI_MODEL', 'gemini-1.5-flash')
+    app.config['HF_TOKEN'] = os.getenv('HF_TOKEN', '')
     
     # Enable CORS with proper configuration
     cors_config = {

@@ -1,8 +1,10 @@
-import React, { forwardRef } from "react";
-import { DressSVG } from "../utils/dressGenerator.jsx";
+import { forwardRef } from "react";
+
+const PLACEHOLDER_IMAGE =
+  "https://tse1.mm.bing.net/th/id/OIP.U5u2Gh2APMkBG0TYP3a4mQHaLH?rs=1&pid=ImgDetMain&o=7&rm=3";
 
 const Preview = forwardRef(function Preview(
-  { params, isGenerating, onExportSvg, onExportPng, useAI },
+  { isGenerating, onExportSvg, onExportPng, aiImageUrl },
   ref,
 ) {
   return (
@@ -46,22 +48,25 @@ const Preview = forwardRef(function Preview(
       </div>
 
       <div
-        className="flex-1 min-h-[500px] w-full rounded-xl grid place-items-center overflow-hidden shadow-inner"
+        className="flex-1 min-h-[500px] w-full rounded-xl grid place-items-center overflow-hidden shadow-inner relative"
         style={{
           background: "rgba(255,255,255,0.5)",
           border: "1px solid rgba(255,255,255,0.5)",
         }}
       >
         {isGenerating ? (
-          <div
-            className="flex flex-col items-center text-sm"
-            style={{ color: "#0066cc" }}
-          >
+          <div className="flex flex-col items-center text-sm" style={{ color: "#0066cc" }}>
             <div className="h-8 w-8 rounded-full border-2 border-[#0066cc] border-t-[#0099ff] animate-spin" />
-            <span className="mt-2">Rendering…</span>
+            <span className="mt-2">Generating realistic image...</span>
           </div>
         ) : (
-          <DressSVG ref={ref} params={params} useAI={useAI} />
+          <img
+            ref={ref}
+            src={aiImageUrl || PLACEHOLDER_IMAGE}
+            alt="Dress Design Preview"
+            className="w-full h-full object-contain rounded-lg"
+            style={{ maxHeight: "600px" }}
+          />
         )}
       </div>
       <p className="mt-3 text-xs" style={{ color: "#0066cc" }}>
