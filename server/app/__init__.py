@@ -66,6 +66,7 @@ def create_app(config_name='development'):
     from app.routes.designs import designs_bp
     from app.routes.ai import ai_bp
     from app.routes.conversations import conversations_bp
+    from app.routes.styles import styles_bp
     
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
     app.register_blueprint(accounts_bp, url_prefix='/api/accounts')
@@ -75,6 +76,7 @@ def create_app(config_name='development'):
     app.register_blueprint(designs_bp, url_prefix='/api/designs')
     app.register_blueprint(ai_bp, url_prefix='/api/ai')
     app.register_blueprint(conversations_bp)
+    app.register_blueprint(styles_bp)
     
     # Ensure upload directories exist
     os.makedirs(UPLOAD_FOLDER, exist_ok=True)

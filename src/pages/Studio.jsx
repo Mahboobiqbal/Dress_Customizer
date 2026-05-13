@@ -1,7 +1,7 @@
 import { useRef, useState, useEffect } from "react";
 import { useLocation, useParams } from "react-router-dom";
 import CustomizerPanel from "../components/CustomizerPanel.jsx";
-import { conversationsAPI, aiAPI } from "../utils/api.js";
+import { conversationsAPI, aiAPI, stylesAPI, gownDesignsAPI } from "../utils/api.js";
 import toast from "react-hot-toast";
 
 export default function Studio() {
@@ -19,9 +19,8 @@ export default function Studio() {
     neckline: "v-neck", trainLength: 50, texture: "satin",
     textureIntensity: 40, skirtVolume: 60, prompt: "",
   });
-  const [savedStyles, setSavedStyles] = useState(() => {
-    try { return JSON.parse(localStorage.getItem("saved_styles") || "[]"); } catch { return []; }
-  });
+  const [savedStyles, setSavedStyles] = useState([]);
+  const [savedDesigns, setSavedDesigns] = useState([]);
   const [showSlashMenu, setShowSlashMenu] = useState(false);
   const [slashFilter, setSlashFilter] = useState("");
   const [slashIndex, setSlashIndex] = useState(0);
@@ -37,29 +36,26 @@ export default function Studio() {
     setShowSaveDialog(true);
   };
 
-  const confirmSaveStyle = () => {
+  const confirmSaveStyle = async () => {
     const name = saveName.trim();
     if (!name) {
       setSaveNameError("Please enter a name");
       return;
     }
-    const style = {
-      id: Date.now().toString(),
-      name: name,
-      color: params.color,
-      pattern: params.pattern,
-      sleeveLength: params.sleeveLength,
-      neckline: params.neckline,
-      trainLength: params.trainLength,
-      texture: params.texture,
-      textureIntensity: params.textureIntensity,
-      skirtVolume: params.skirtVolume,
-    };
-    const updated = [...savedStyles, style];
-    setSavedStyles(updated);
-    localStorage.setItem("saved_styles", JSON.stringify(updated));
-    setShowSaveDialog(false);
-    toast.success(`Style "${name}" saved!`);
+    try {
+      const res = await stylesAPI.create({
+        name,
+        color: params.color, pattern: params.pattern,
+        sleeve_length: params.sleeveLength, neckline: params.neckline,
+        train_length: params.trainLength, texture: params.texture,
+        texture_intensity: params.textureIntensity, skirt_volume: params.skirtVolume,
+      });
+      setSavedStyles((prev) => [res.style, ...prev]);
+      setShowSaveDialog(false);
+      toast.success(`Style "${name}" saved!`);
+    } catch {
+      toast.error("Failed to save style");
+    }
   };
 
   const applyStyle = (style) => {
@@ -67,12 +63,12 @@ export default function Studio() {
       ...p,
       color: style.color || p.color,
       pattern: style.pattern || p.pattern,
-      sleeveLength: style.sleeveLength ?? p.sleeveLength,
       neckline: style.neckline || p.neckline,
-      trainLength: style.trainLength ?? p.trainLength,
       texture: style.texture || p.texture,
-      textureIntensity: style.textureIntensity ?? p.textureIntensity,
-      skirtVolume: style.skirtVolume ?? p.skirtVolume,
+      sleeveLength: style.sleeveLength ?? style.sleeve_length ?? p.sleeveLength,
+      trainLength: style.trainLength ?? style.train_length ?? p.trainLength,
+      textureIntensity: style.textureIntensity ?? style.texture_intensity ?? p.textureIntensity,
+      skirtVolume: style.skirtVolume ?? style.skirt_volume ?? p.skirtVolume,
     }));
     setPrompt((prev) => {
       const withoutSlash = prev.replace(/\/\w*$/, "").trim();
@@ -83,14 +79,20 @@ export default function Studio() {
     inputRef.current?.focus();
   };
 
-  const deleteStyle = (styleId) => {
-    const updated = savedStyles.filter((s) => s.id !== styleId);
-    setSavedStyles(updated);
-    localStorage.setItem("saved_styles", JSON.stringify(updated));
-    toast.success("Style deleted");
+  const deleteStyle = async (styleId) => {
+    try {
+      await stylesAPI.delete(styleId);
+      setSavedStyles((prev) => prev.filter((s) => s.id !== styleId));
+      toast.success("Style deleted");
+    } catch {
+      toast.error("Failed to delete style");
+    }
   };
 
   useEffect(() => {
+    stylesAPI.list().then((res) => setSavedStyles(res.styles || [])).catch(() => {});
+    gownDesignsAPI.getAll().then((res) => setSavedDesigns(res.designs || [])).catch(() => {});
+
     aiAPI.listModels().then((res) => {
       if (res.models?.length) {
         setModels(res.models);
@@ -412,7 +414,7 @@ export default function Studio() {
                 style={{
                   border: "1px solid rgba(255,255,255,0.4)",
                   background: "rgba(255,255,255,0.95)",
-                  maxHeight: "200px",
+                  maxHeight: "280px",
                   overflowY: "auto",
                 }}
               >
@@ -420,38 +422,34 @@ export default function Studio() {
                   Saved Styles
                 </div>
                 {savedStyles.length === 0 ? (
-                  <p className="px-3 py-3 text-xs text-center opacity-60">
-                    No saved styles yet. Open Customize panel and click Save.
-                  </p>
+                  <p className="px-3 py-2 text-xs text-center opacity-60">No saved styles. Open Customize & click Save.</p>
                 ) : (
                   savedStyles.filter((s) => s.name.toLowerCase().includes(slashFilter)).map((style, i) => (
-                    <button
-                      key={style.id}
-                      className={`w-full flex items-center justify-between px-3 py-2 text-sm transition-colors text-left ${
-                        i === slashIndex ? "bg-[#0066cc]/15" : "hover:bg-[#0066cc]/10"
-                      }`}
-                      style={{ color: "#001a33" }}
-                      onClick={() => applyStyle(style)}
-                      onMouseEnter={() => setSlashIndex(i)}
-                    >
+                    <button key={style.id} className={`w-full flex items-center justify-between px-3 py-1.5 text-sm transition-colors text-left ${i === slashIndex ? "bg-[#0066cc]/15" : "hover:bg-[#0066cc]/10"}`} style={{ color: "#001a33" }} onClick={() => { setSlashIndex(-1); applyStyle(style); }} onMouseEnter={() => setSlashIndex(i)}>
                       <span className="flex items-center gap-2">
-                        <span
-                          className="w-3 h-3 rounded-full border border-white/50 inline-block shrink-0"
-                          style={{ background: style.color }}
-                        />
+                        <span className="w-3 h-3 rounded-full border border-white/50 inline-block shrink-0" style={{ background: style.color }} />
                         {style.name}
                       </span>
-                      <span
-                        className="text-[10px] opacity-40 hover:opacity-100 px-1"
-                        onClick={(e) => { e.stopPropagation(); deleteStyle(style.id); }}
-                      >
-                        x
-                      </span>
+                      <span className="text-[10px] opacity-40 hover:opacity-100 px-1" onClick={(e) => { e.stopPropagation(); deleteStyle(style.id); }}>x</span>
                     </button>
                   ))
                 )}
-                {savedStyles.length > 0 && savedStyles.filter((s) => s.name.toLowerCase().includes(slashFilter)).length === 0 && (
-                  <p className="px-3 py-2 text-xs opacity-50">No matching styles</p>
+
+                <div className="px-3 py-1.5 text-[10px] font-medium uppercase tracking-wider border-t" style={{ color: "#0066cc", borderColor: "rgba(0,102,204,0.1)" }}>
+                  Recent Designs
+                </div>
+                {savedDesigns.length === 0 ? (
+                  <p className="px-3 py-2 text-xs text-center opacity-60">No designs yet. Generate in chat.</p>
+                ) : (
+                  savedDesigns.filter((d) => (d.name || "").toLowerCase().includes(slashFilter)).map((design, i) => (
+                    <button key={design.id} className="w-full flex items-center justify-between px-3 py-1.5 text-sm transition-colors text-left hover:bg-[#0066cc]/10" style={{ color: "#001a33" }} onClick={() => applyStyle(design)}>
+                      <span className="flex items-center gap-2 truncate">
+                        <span className="w-3 h-3 rounded-full border border-white/50 inline-block shrink-0" style={{ background: design.color || "#EC4899" }} />
+                        <span className="truncate">{design.name || "Untitled"}</span>
+                      </span>
+                      <span className="text-[10px] shrink-0 opacity-50" style={{ color: "#0066cc" }}>{new Date(design.created_at).toLocaleDateString()}</span>
+                    </button>
+                  ))
                 )}
               </div>
             )}

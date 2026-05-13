@@ -214,13 +214,15 @@ export const aiAPI = {
 
 export const conversationsAPI = {
   list: () => apiRequest("/conversations"),
-
   get: (id) => apiRequest(`/conversations/${id}`),
+  delete: (id) => apiRequest(`/conversations/${id}`, { method: "DELETE" }),
+};
 
-  delete: (id) =>
-    apiRequest(`/conversations/${id}`, {
-      method: "DELETE",
-    }),
+export const stylesAPI = {
+  list: () => apiRequest("/styles"),
+  create: (data) =>
+    apiRequest("/styles", { method: "POST", body: JSON.stringify(data) }),
+  delete: (id) => apiRequest(`/styles/${id}`, { method: "DELETE" }),
 };
 
 export default apiRequest;
