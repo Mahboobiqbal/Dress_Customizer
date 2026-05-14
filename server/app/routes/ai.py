@@ -20,6 +20,8 @@ POLLINATIONS_BASE = "https://image.pollinations.ai/prompt"
 
 
 def build_dress_prompt(prompt_text, params):
+    dress_type = params.get('dress_type', 'dress').replace('-', ' ')
+    
     color_map = {
         '#111827': 'black', '#2457F5': 'blue', '#E11D48': 'red',
         '#10B981': 'emerald green', '#A855F7': 'purple', '#F59E0B': 'gold',
@@ -29,7 +31,7 @@ def build_dress_prompt(prompt_text, params):
     color_hex = params.get('color', '#EC4899')
     color_name = color_map.get(color_hex.upper(), color_hex)
 
-    hints = []
+    hints = [dress_type]
     if color_name:
         hints.append(color_name)
     if params.get('pattern') and params['pattern'] != 'solid':
@@ -38,7 +40,7 @@ def build_dress_prompt(prompt_text, params):
         hints.append(f"{params['texture']} fabric")
     hints_str = ", ".join(hints)
 
-    subject = prompt_text.strip() if prompt_text and prompt_text.strip() else "a garment"
+    subject = prompt_text.strip() if prompt_text and prompt_text.strip() else f"a {dress_type}"
 
     if hints_str:
         return f"{subject}, {hints_str}, fashion photography, studio lighting, clean background, sharp focus, high detail"

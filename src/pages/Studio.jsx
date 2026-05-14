@@ -18,6 +18,7 @@ export default function Studio() {
     color: "#EC4899", pattern: "solid", sleeveLength: 70,
     neckline: "v-neck", trainLength: 50, texture: "satin",
     textureIntensity: 40, skirtVolume: 60, prompt: "",
+    dressType: "frock",
   });
   const [savedStyles, setSavedStyles] = useState([]);
   const [savedDesigns, setSavedDesigns] = useState([]);
@@ -155,7 +156,7 @@ export default function Studio() {
         color: params.color, pattern: params.pattern, neckline: params.neckline,
         sleeve_length: params.sleeveLength, train_length: params.trainLength,
         texture: params.texture, texture_intensity: params.textureIntensity,
-        skirt_volume: params.skirtVolume,
+        skirt_volume: params.skirtVolume, dress_type: params.dressType,
       }, selectedModel, conversationId);
 
       if (response.image) {

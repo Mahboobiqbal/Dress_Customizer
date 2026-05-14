@@ -1,3 +1,6 @@
+import { SketchPicker } from "react-color";
+import { useState } from "react";
+
 export default function CustomizerPanel({
   params,
   setParams,
@@ -9,16 +12,7 @@ export default function CustomizerPanel({
   onModelChange,
 }) {
   const set = (k, v) => setParams((p) => ({ ...p, [k]: v }));
-
-  const presets = [
-    "#111827",
-    "#2457F5",
-    "#E11D48",
-    "#10B981",
-    "#A855F7",
-    "#F59E0B",
-    "#FFFFFF",
-  ];
+  const [showColorPicker, setShowColorPicker] = useState(false);
 
   const currentModel = models?.find((m) => m.id === selectedModel);
 
@@ -80,28 +74,23 @@ export default function CustomizerPanel({
         <div className="col-span-1">
           <Label>Color Palette</Label>
           <div className="flex items-center gap-3 mt-2">
-            <input
-              type="color"
-              value={params.color}
-              onChange={(e) => set("color", e.target.value)}
-              className="h-10 w-14 rounded-xl border border-white/60 bg-white/40 cursor-pointer shadow-sm p-0 overflow-hidden"
+            <div
+              className="h-10 w-14 rounded-xl border border-white/60 bg-white/40 cursor-pointer shadow-sm"
+              style={{ backgroundColor: params.color }}
+              onClick={() => setShowColorPicker(!showColorPicker)}
             />
-            <div className="flex flex-wrap gap-2">
-              {presets.map((c) => (
-                <button
-                  key={c}
-                  onClick={() => set("color", c)}
-                  aria-pressed={params.color === c}
-                  className={`h-8 w-8 rounded-full border border-white/40 ring-2 ring-transparent transition-all duration-200 hover:scale-110 shadow-sm ${
-                    params.color === c
-                      ? "ring-[#0099ff] ring-offset-2 ring-offset-white/50 scale-110"
-                      : "hover:ring-[#0066cc]/50"
-                  }`}
-                  style={{ background: c }}
-                  title={c}
+            {showColorPicker && (
+              <div className="absolute z-10">
+                <div
+                  className="fixed inset-0"
+                  onClick={() => setShowColorPicker(false)}
                 />
-              ))}
-            </div>
+                <SketchPicker
+                  color={params.color}
+                  onChange={(color) => set("color", color.hex)}
+                />
+              </div>
+            )}
           </div>
         </div>
 
@@ -122,6 +111,43 @@ export default function CustomizerPanel({
             <option value="polka">Polka</option>
             <option value="floral">Floral</option>
             <option value="lace">Lace</option>
+          </select>
+        </div>
+
+        <div>
+          <Label>Dress Type</Label>
+          <select
+            value={params.dressType}
+            onChange={(e) => set("dressType", e.target.value)}
+            className="mt-2 w-full rounded-xl border px-3 py-2.5 text-sm backdrop-blur-md shadow-sm focus:outline-none focus:ring-2 focus:ring-[#0099ff] transition-all cursor-pointer"
+            style={{
+              border: "1px solid rgba(255,255,255,0.7)",
+              background: "rgba(255,255,255,0.5)",
+              color: "#001a33",
+            }}
+          >
+            <option value="casual">Casual Dresses</option>
+            <option value="party-wear">Party Wear Dresses</option>
+            <option value="wedding">Wedding Dresses</option>
+            <option value="evening-gown">Evening Gowns</option>
+            <option value="maxi">Maxi Dresses</option>
+            <option value="mini">Mini Dresses</option>
+            <option value="traditional">Traditional Dresses</option>
+            <option value="formal">Formal Dresses</option>
+            <option value="office-wear">Office Wear</option>
+            <option value="streetwear">Streetwear Fashion</option>
+            <option value="summer">Summer Dresses</option>
+            <option value="winter">Winter Outfits</option>
+            <option value="ethnic">Ethnic Wear</option>
+            <option value="bridal">Bridal Dresses</option>
+            <option value="prom">Prom Dresses</option>
+            <option value="kids">Kids Dresses</option>
+            <option value="luxury-designer">Luxury Designer Dresses</option>
+            <option value="abaya-modest">Abayas & Modest Fashion</option>
+            <option value="saree-lehenga">Sarees & Lehengas</option>
+            <option value="hoodie-oversized">Hoodies & Oversized Fashion</option>
+            <option value="anime-fantasy">Anime / Fantasy Dresses</option>
+            <option value="vintage">Vintage Fashion</option>
           </select>
         </div>
 
