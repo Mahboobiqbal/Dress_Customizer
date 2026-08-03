@@ -28,25 +28,40 @@ def generate_image():
             return jsonify({'error': 'Google Imagen is not available. GOOGLE_API_KEY is not configured.'}), 503
 
         from google import genai
+        from google.genai import types
         client = genai.Client(api_key=api_key)
 
-        response = client.models.generate_content(
-            model='gemini-3.1-flash-lite-image',
-            contents=f"A fashion illustration of an elegant dress, {prompt}. Highly detailed, haute couture.",
-            config={
-                'response_modalities': ['TEXT', 'IMAGE'],
-            }
-        )
+        GEMINI_IMAGE_MODELS = [
+            'gemini-2.5-flash-image',
+            'gemini-3-pro-image',
+            'gemini-3.1-flash-image',
+            'gemini-3.1-flash-image-preview',
+            'gemini-3-pro-image-preview',
+        ]
 
-        # Extract image from response parts
         image_bytes = None
-        for part in response.candidates[0].content.parts:
-            if hasattr(part, 'inline_data') and part.inline_data:
-                image_bytes = part.inline_data.data
-                break
+        last_error = None
+        for model in GEMINI_IMAGE_MODELS:
+            try:
+                response = client.models.generate_content(
+                    model=model,
+                    contents=f"A fashion illustration of an elegant dress, {prompt}. Highly detailed, haute couture.",
+                    config={
+                        'response_modalities': ['TEXT', 'IMAGE'],
+                    }
+                )
+                image_bytes = None
+                for part in response.candidates[0].content.parts:
+                    if hasattr(part, 'inline_data') and part.inline_data:
+                        image_bytes = part.inline_data.data
+                        break
+                if image_bytes:
+                    break
+            except Exception as e:
+                last_error = str(e)
 
         if not image_bytes:
-            return jsonify({'error': 'Google Gemini returned no image. Please try again.'}), 500
+            return jsonify({'error': f'Google Gemini returned no image: {last_error or "all models failed"}. Please try again.'}), 500
 
         encoded = base64.b64encode(image_bytes).decode('utf-8')
         data_url = f"data:image/png;base64,{encoded}"

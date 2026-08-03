@@ -1,6 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext.jsx";
+import { conversationsAPI } from "../utils/api.js";
+import toast from "react-hot-toast";
 
 function SidebarItem({ icon, label, to, active = false, collapsed }) {
   return (
@@ -23,6 +25,9 @@ function SidebarItem({ icon, label, to, active = false, collapsed }) {
 
 export default function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
+  const [recentChats, setRecentChats] = useState([]);
+  const [deleteId, setDeleteId] = useState(null);
+  const [menuOpenId, setMenuOpenId] = useState(null);
   const location = useLocation();
   const navigate = useNavigate();
   const { logout, user } = useAuth();
@@ -32,6 +37,19 @@ export default function Sidebar() {
     ? `${(user.first_name?.[0] || "").toUpperCase()}${(user.last_name?.[0] || "").toUpperCase()}`
     : user?.email?.[0]?.toUpperCase() || "?";
 
+  useEffect(() => {
+    conversationsAPI.list()
+      .then((res) => setRecentChats((res.conversations || []).slice(0, 8)))
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (!menuOpenId) return;
+    const close = () => setMenuOpenId(null);
+    document.addEventListener("click", close);
+    return () => document.removeEventListener("click", close);
+  }, [menuOpenId]);
+
   const handleLogout = () => {
     logout();
     localStorage.removeItem("access_token");
@@ -40,7 +58,20 @@ export default function Sidebar() {
     navigate("/");
   };
 
-  const items = [
+  const confirmDelete = async () => {
+    if (!deleteId) return;
+    try {
+      await conversationsAPI.delete(deleteId);
+      setRecentChats((prev) => prev.filter((c) => c.id !== deleteId));
+      toast.success("Chat deleted");
+    } catch {
+      toast.error("Failed to delete");
+    }
+    setDeleteId(null);
+    setMenuOpenId(null);
+  };
+
+  const navItems = [
     { to: "/studio", icon: <SparkIcon className="w-4 h-4" />, label: "Studio" },
     { to: "/recent-chats", icon: <ChatIcon className="w-4 h-4" />, label: "Chats" },
     { to: "/styles", icon: <DesignIcon className="w-4 h-4" />, label: "Styles" },
@@ -56,7 +87,7 @@ export default function Sidebar() {
         borderRight: "1px solid rgba(0,0,0,0.06)",
       }}
     >
-      {/* Top: Logo + Profile + Toggle */}
+      {/* Top: Profile + Toggle */}
       <div className={`flex items-center shrink-0 gap-2 ${collapsed ? "flex-col py-3" : "px-3 py-3"}`}>
         <Link to="/profile" title="Profile" className="w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 transition-all hover:ring-2 hover:ring-[#0066cc]/20" style={{ background: "linear-gradient(135deg, #0066cc, #0099ff)", color: "#fff" }}>
           {initials}
@@ -77,11 +108,65 @@ export default function Sidebar() {
       </div>
 
       {/* Nav */}
-      <div className={`flex flex-col gap-0.5 flex-1 py-1 ${collapsed ? "items-center px-0" : "px-2"}`}>
-        {items.map((item) => (
+      <div className={`flex flex-col gap-0.5 py-1 ${collapsed ? "items-center px-0" : "px-2"}`}>
+        {navItems.map((item) => (
           <SidebarItem key={item.to} {...item} active={base === item.to} collapsed={collapsed} />
         ))}
       </div>
+
+      {/* Recent Chats */}
+      {!collapsed && recentChats.length > 0 && (
+        <>
+          <div style={{ borderTop: "1px solid rgba(0,0,0,0.06)" }} className="mx-3" />
+          <div className="flex-1 min-h-0 overflow-y-auto py-2 px-2">
+            <p className="text-[9px] font-bold uppercase tracking-wider px-2.5 mb-1.5" style={{ color: "#cbd5e1" }}>
+              Recent
+            </p>
+            <div className="space-y-0.5">
+              {recentChats.map((c) => (
+                <div key={c.id} className="relative">
+                  <button
+                    onClick={() => navigate(`/studio/${c.id}`)}
+                    className="w-full flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-left transition-colors hover:bg-gray-50 group pr-6"
+                  >
+                    <span className="text-[10px] truncate flex-1" style={{ color: "#64748b" }}>
+                      {c.title || "Design Session"}
+                    </span>
+                  </button>
+                  {/* 3-dot menu */}
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setMenuOpenId(menuOpenId === c.id ? null : c.id); }}
+                    className="absolute right-1 top-1/2 -translate-y-1/2 w-5 h-5 rounded flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-gray-200"
+                    style={{ color: "#94a3b8", zIndex: 10 }}
+                  >
+                    <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor">
+                      <circle cx="12" cy="5" r="2" /><circle cx="12" cy="12" r="2" /><circle cx="12" cy="19" r="2" />
+                    </svg>
+                  </button>
+                  {/* Dropdown */}
+                  {menuOpenId === c.id && (
+                    <div
+                      className="absolute right-0 top-full mt-0.5 rounded-lg border shadow-lg z-30 overflow-hidden"
+                      style={{ background: "#ffffff", border: "1px solid rgba(0,0,0,0.08)", minWidth: "100px" }}
+                    >
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setDeleteId(c.id); setMenuOpenId(null); }}
+                        className="w-full flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-medium transition-colors hover:bg-red-50"
+                        style={{ color: "#E11D48" }}
+                      >
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                        Delete
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Bottom: Home + Logout */}
       <div className={`flex flex-col gap-0.5 py-2 ${collapsed ? "items-center px-0" : "px-2"}`}>
@@ -111,6 +196,20 @@ export default function Sidebar() {
           {!collapsed && <span className="text-[11px] font-medium">Logout</span>}
         </button>
       </div>
+
+      {/* Delete confirmation */}
+      {deleteId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-sm" onClick={() => setDeleteId(null)}>
+          <div className="rounded-xl shadow-2xl p-4 w-64 mx-4" style={{ background: "#ffffff", border: "1px solid rgba(0,0,0,0.06)" }} onClick={(e) => e.stopPropagation()}>
+            <p className="text-xs font-semibold mb-1" style={{ color: "#001a33" }}>Delete this chat?</p>
+            <p className="text-[10px] mb-3" style={{ color: "#94a3b8" }}>This cannot be undone.</p>
+            <div className="flex gap-1.5">
+              <button onClick={() => setDeleteId(null)} className="flex-1 text-[10px] px-2 py-1.5 rounded-lg font-medium hover:bg-gray-50 transition-colors" style={{ color: "#64748b", border: "1px solid rgba(0,0,0,0.08)" }}>Cancel</button>
+              <button onClick={confirmDelete} className="flex-1 text-[10px] px-2 py-1.5 rounded-lg font-medium text-white transition-all" style={{ background: "#E11D48" }}>Delete</button>
+            </div>
+          </div>
+        </div>
+      )}
     </aside>
   );
 }

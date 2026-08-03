@@ -2,6 +2,7 @@ import { useRef, useState, useEffect, useMemo, useCallback } from "react";
 import { useLocation, useParams } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext.jsx";
 import CustomizerPanel from "../components/CustomizerPanel.jsx";
+import MarkdownMessage from "../components/MarkdownMessage.jsx";
 import { conversationsAPI, aiAPI, stylesAPI, gownDesignsAPI } from "../utils/api.js";
 import toast from "react-hot-toast";
 
@@ -17,7 +18,7 @@ export default function Studio() {
   const [models, setModels] = useState([]);
   const [textModels, setTextModels] = useState([]);
   const [selectedModel, setSelectedModel] = useState("pollinations");
-  const [genMode, setGenMode] = useState("image");
+  const [genMode, setGenMode] = useState("text");
   const [showCustomize, setShowCustomize] = useState(false);
   const [params, setParams] = useState({
     color: "#EC4899", pattern: "solid", sleeveLength: 70,
@@ -32,6 +33,10 @@ export default function Studio() {
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [saveName, setSaveName] = useState("");
   const [saveNameError, setSaveNameError] = useState("");
+  const [showMentionMenu, setShowMentionMenu] = useState(false);
+  const [mentionQuery, setMentionQuery] = useState("");
+  const [mentionIndex, setMentionIndex] = useState(0);
+  const [activeMention, setActiveMention] = useState(null);
   const inputRef = useRef(null);
   const [isListening, setIsListening] = useState(false);
   const recognitionRef = useRef(null);
@@ -195,10 +200,89 @@ export default function Studio() {
     const text = prompt.trim() || params.prompt?.trim() || "Elegant dress";
     if (!text) return;
 
-    const currentModel = models.find((m) => m.id === selectedModel) || textModels.find((m) => m.id === selectedModel);
-    if (currentModel?.requires_key && !currentModel?.key_configured) {
-      toast.error(`"${currentModel.name}" is not available. Please select another model.`);
+    // Check for @model:prompt pattern
+    const mentionMatch = text.match(/^@(.+?):\s*(.+)$/s);
+    let forceImageModel = null;
+    let actualPrompt = text;
+
+    if (mentionMatch) {
+      const modelName = mentionMatch[1].trim();
+      actualPrompt = mentionMatch[2].trim() || "Elegant dress";
+      forceImageModel = models.find((m) => m.name.toLowerCase() === modelName.toLowerCase());
+      if (!forceImageModel) {
+        toast.error(`Model "${modelName}" not found.`);
+        return;
+      }
+    }
+
+    if (forceImageModel) {
+      // @ mention overrides to image generation
+      if (forceImageModel.requires_key && !forceImageModel.key_configured) {
+        toast.error(`"${forceImageModel.name}" is not available. Please select another model.`);
+        return;
+      }
+
+      setIsGenerating(true);
+      setIsTyping(true);
+      setPrompt("");
+      setActiveMention(null);
+
+      const userMsg = {
+        id: "temp-" + Date.now(), sender_role: "user", content: actualPrompt,
+        image_url: inputImagePreview || null,
+        created_at: new Date().toISOString(),
+      };
+      setMessages((prev) => [...prev, userMsg]);
+
+      try {
+        let inputImageData = null;
+        if (inputImage) inputImageData = await toBase64(inputImage);
+
+        const response = await aiAPI.generateImage(actualPrompt, {
+          color: params.color, pattern: params.pattern, neckline: params.neckline,
+          sleeve_length: params.sleeveLength, train_length: params.trainLength,
+          texture: params.texture, texture_intensity: params.textureIntensity,
+          skirt_volume: params.skirtVolume, dress_type: params.dressType,
+        }, forceImageModel.id, conversationId, inputImageData);
+
+        if (response.image) {
+          if (response.conversation_id && !conversationId) setConversationId(response.conversation_id);
+          setLastImageUrl(response.image);
+          clearInputImage();
+          const aiMsg = {
+            id: "msg-" + Date.now(), sender_role: "assistant",
+            content: actualPrompt,
+            image_url: response.image,
+            created_at: new Date().toISOString(),
+          };
+          setMessages((prev) => [...prev, aiMsg]);
+          toast.success("Design generated!");
+        } else {
+          toast.error(response.error || "Generation failed");
+          setMessages((prev) => prev.filter((m) => m.id !== userMsg.id));
+        }
+      } catch (error) {
+        toast.error("Generation failed: " + (error.message || "Unknown error"));
+        setMessages((prev) => prev.filter((m) => m.id !== userMsg.id));
+      }
+      setIsTyping(false);
+      setIsGenerating(false);
       return;
+    }
+
+    // Normal flow (no @ mention)
+    if (genMode === "text") {
+      const textModel = textModels.find((m) => m.key_configured) || textModels[0];
+      if (textModel?.requires_key && !textModel?.key_configured) {
+        toast.error(`"${textModel.name}" is not available. Please select another model.`);
+        return;
+      }
+    } else {
+      const currentModel = models.find((m) => m.id === selectedModel) || textModels.find((m) => m.id === selectedModel);
+      if (currentModel?.requires_key && !currentModel?.key_configured) {
+        toast.error(`"${currentModel.name}" is not available. Please select another model.`);
+        return;
+      }
     }
 
     setIsGenerating(true);
@@ -219,7 +303,8 @@ export default function Studio() {
       }
 
       if (genMode === "text") {
-        const response = await aiAPI.generateText(text, selectedModel, conversationId, inputImageData);
+        const textModelId = (textModels.find((m) => m.key_configured) || textModels[0])?.id || "groq-llama";
+        const response = await aiAPI.generateText(text, textModelId, conversationId, inputImageData);
         if (response.text) {
           if (response.conversation_id && !conversationId) setConversationId(response.conversation_id);
           const aiMsg = {
@@ -322,6 +407,17 @@ export default function Studio() {
     const val = e.target.value;
     setPrompt(val);
 
+    // Check for @ mention
+    const mentionMatch = val.match(/@(\w*)$/);
+    if (mentionMatch) {
+      setMentionQuery(mentionMatch[1].toLowerCase());
+      setMentionIndex(0);
+      setShowMentionMenu(true);
+      setShowSlashMenu(false);
+      return;
+    }
+    if (showMentionMenu) setShowMentionMenu(false);
+
     const slashMatch = val.match(/\/(\w*)$/);
     if (slashMatch) {
       setSlashFilter(slashMatch[1].toLowerCase());
@@ -332,7 +428,47 @@ export default function Studio() {
     }
   };
 
+  const selectMention = (model) => {
+    // Replace @query with @ModelName: in the input
+    const newPrompt = prompt.replace(/@\w*$/, `@${model.name}:`);
+    setPrompt(newPrompt);
+    setActiveMention(model);
+    setShowMentionMenu(false);
+    inputRef.current?.focus();
+  };
+
+  const removeMention = () => {
+    const newPrompt = prompt.replace(/@\w+:\s*/, "");
+    setPrompt(newPrompt);
+    setActiveMention(null);
+  };
+
   const handleKeyDown = (e) => {
+    if (showMentionMenu) {
+      const filtered = models.filter((m) => m.name.toLowerCase().includes(mentionQuery));
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setMentionIndex((prev) => Math.min(prev + 1, filtered.length - 1));
+        return;
+      }
+      if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setMentionIndex((prev) => Math.max(prev - 1, 0));
+        return;
+      }
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        if (filtered.length > 0) {
+          selectMention(filtered[Math.min(mentionIndex, filtered.length - 1)]);
+          return;
+        }
+        setShowMentionMenu(false);
+      }
+      if (e.key === "Escape") {
+        setShowMentionMenu(false);
+        return;
+      }
+    }
     if (showSlashMenu) {
       const filtered = savedStyles.filter((s) => s.name.toLowerCase().includes(slashFilter));
       if (e.key === "ArrowDown") {
@@ -387,12 +523,9 @@ export default function Studio() {
   };
 
   const supportsImageInput = useMemo(() => {
-    if (genMode === "text") return false;
     const m = models.find((m) => m.id === selectedModel);
     return m?.supports_image_input ?? false;
-  }, [models, selectedModel, genMode]);
-
-  const activeModels = genMode === "text" ? textModels : models;
+  }, [models, selectedModel]);
 
   return (
     <div
@@ -402,7 +535,7 @@ export default function Studio() {
         color: "#001a33",
       }}
     >
-      <div className="flex items-center justify-center px-3 py-2 shrink-0">
+      <div className="flex items-center justify-between px-3 py-2 shrink-0">
         <div className="flex items-center gap-1.5">
           {conversationId && (
             <button
@@ -417,53 +550,22 @@ export default function Studio() {
               + New Chat
             </button>
           )}
-          {/* Mode toggle */}
-          <div className="flex rounded-full p-0.5" style={{ background: "#ffffff", border: "1px solid rgba(0,0,0,0.06)" }}>
-            <button
-              onClick={() => { setGenMode("image"); setSelectedModel(models[0]?.id || "pollinations"); }}
-              className="text-[11px] px-2.5 py-1 rounded-full font-medium transition-all"
-              style={{
-                background: genMode === "image" ? "#0066cc" : "transparent",
-                color: genMode === "image" ? "#fff" : "#94a3b8",
-              }}
-            >
-              Image
-            </button>
-            <button
-              onClick={() => { setGenMode("text"); setSelectedModel(textModels[0]?.id || ""); }}
-              className="text-[11px] px-2.5 py-1 rounded-full font-medium transition-all"
-              style={{
-                background: genMode === "text" ? "#0066cc" : "transparent",
-                color: genMode === "text" ? "#fff" : "#94a3b8",
-              }}
-            >
-              Text
-            </button>
-          </div>
-          <select
-            value={selectedModel}
-            onChange={(e) => setSelectedModel(e.target.value)}
-            className="text-[11px] rounded-full border px-2.5 py-1 focus:outline-none cursor-pointer transition-all"
-            style={{ border: "1px solid rgba(0,0,0,0.08)", background: "#ffffff", color: "#001a33" }}
-          >
-            {activeModels.map((m) => (
-              <option key={m.id} value={m.id} disabled={m.requires_key && !m.key_configured}>
-                {m.name}{m.requires_key && !m.key_configured ? " (no key)" : ""}
-              </option>
-            ))}
-          </select>
-          <button
-            onClick={() => setShowCustomize(!showCustomize)}
-            className="text-[11px] px-2.5 py-1 rounded-full font-medium transition-all shrink-0 hover:shadow-sm"
-            style={{
-              background: showCustomize ? "linear-gradient(135deg, #0066cc, #0099ff)" : "#ffffff",
-              color: showCustomize ? "#fff" : "#0066cc",
-              border: showCustomize ? "none" : "1px solid rgba(0,102,204,0.15)",
-            }}
-          >
-            Customize
-          </button>
         </div>
+        <button
+          onClick={() => setShowCustomize(!showCustomize)}
+          className="text-[11px] px-3 py-1.5 rounded-full font-medium transition-all shrink-0 hover:shadow-sm flex items-center gap-1.5"
+          style={{
+            background: showCustomize ? "#0066cc" : "#ffffff",
+            color: showCustomize ? "#fff" : "#0066cc",
+            border: showCustomize ? "none" : "1px solid rgba(0,102,204,0.15)",
+          }}
+        >
+          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+          Customize
+        </button>
       </div>
 
       <div
@@ -515,7 +617,8 @@ export default function Studio() {
         </div>
       )}
 
-      <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3 min-h-0">
+      <div className="flex-1 overflow-y-auto min-h-0">
+        <div className="max-w-2xl mx-auto px-4 py-3 space-y-3">
         {messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center py-10">
             <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-3" style={{ background: "linear-gradient(135deg, rgba(0,102,204,0.1), rgba(0,153,255,0.05))", border: "1px solid rgba(0,102,204,0.1)" }}>
@@ -583,7 +686,7 @@ export default function Studio() {
                             </div>
                           </div>
                         ) : (
-                          <p className="text-xs whitespace-pre-wrap leading-relaxed">{msg.content}</p>
+                          <MarkdownMessage content={msg.content} />
                         )}
                       </div>
                     )}
@@ -617,131 +720,149 @@ export default function Studio() {
           </>
         )}
         <div ref={chatEndRef} />
+        </div>
       </div>
 
       <div className="px-4 pb-3 pt-1.5 shrink-0 flex justify-center">
         <div
-          className="flex items-end gap-1.5 rounded-full border p-1.5 w-full max-w-lg"
+          className="w-full max-w-2xl rounded-2xl"
           style={{
-            border: "1px solid rgba(0,0,0,0.08)",
             background: "#ffffff",
-            boxShadow: "0 1px 8px rgba(0,0,0,0.04)",
+            border: "1px solid rgba(0,0,0,0.06)",
+            boxShadow: "0 2px 12px rgba(0,0,0,0.04)",
           }}
         >
-          <div className="flex-1 relative">
-            {inputImagePreview && (
-              <div className="absolute bottom-full left-0 mb-1.5 flex items-center gap-1.5 rounded-lg border bg-white p-1.5 shadow-md" style={{ border: "1px solid rgba(0,0,0,0.06)" }}>
-                <img src={inputImagePreview} alt="Input" className="h-8 w-8 rounded object-cover" />
+          {/* Active mention chip */}
+          {activeMention && (
+            <div className="flex items-center gap-1.5 px-3 pt-2.5 pb-0">
+              <span className="text-[10px] px-2 py-0.5 rounded-full font-medium flex items-center gap-1" style={{ background: "rgba(0,102,204,0.08)", color: "#0066cc" }}>
+                <span className="w-1.5 h-1.5 rounded-full" style={{ background: "#0066cc" }} />
+                @{activeMention.name}
+              </span>
+              <button onClick={removeMention} className="text-[9px] w-4 h-4 rounded-full flex items-center justify-center hover:bg-gray-100 transition-colors" style={{ color: "#94a3b8" }}>x</button>
+            </div>
+          )}
+
+          {/* Input image preview */}
+          {inputImagePreview && (
+            <div className="px-3 pt-2.5 pb-0">
+              <div className="inline-flex items-center gap-1.5 rounded-lg border bg-gray-50 p-1.5" style={{ border: "1px solid rgba(0,0,0,0.06)" }}>
+                <img src={inputImagePreview} alt="Input" className="h-10 w-10 rounded-md object-cover" />
                 <span className="text-[10px] font-medium truncate max-w-[80px]" style={{ color: "#001a33" }}>{inputImage.name}</span>
-                <button onClick={clearInputImage} className="text-[10px] p-0.5 rounded hover:bg-gray-100 transition-colors" style={{ color: "#E11D48" }}>&#x2715;</button>
+                <button onClick={clearInputImage} className="text-[10px] p-0.5 rounded hover:bg-gray-200 transition-colors" style={{ color: "#94a3b8" }}>&#x2715;</button>
               </div>
-            )}
+            </div>
+          )}
+
+          {/* Menus */}
+          <div className="relative">
+            {showMentionMenu && (() => {
+              const filtered = models.filter((m) => m.name.toLowerCase().includes(mentionQuery));
+              return filtered.length > 0 ? (
+                <div
+                  className="absolute bottom-full left-3 right-3 mb-2 rounded-xl border shadow-xl overflow-hidden z-10"
+                  style={{ border: "1px solid rgba(0,0,0,0.06)", background: "#ffffff", maxHeight: "180px", overflowY: "auto" }}
+                >
+                  <div className="px-3 py-1.5 text-[9px] font-bold uppercase tracking-wider" style={{ color: "#cbd5e1" }}>
+                    Generate Image With
+                  </div>
+                  {filtered.map((m, i) => (
+                    <button
+                      key={m.id}
+                      className={`w-full flex items-center gap-2 px-3 py-1.5 text-[11px] transition-colors text-left ${i === mentionIndex ? "bg-[#0066cc]/8" : "hover:bg-gray-50"}`}
+                      style={{ color: "#001a33" }}
+                      onClick={() => selectMention(m)}
+                      onMouseEnter={() => setMentionIndex(i)}
+                    >
+                      <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: m.key_configured ? "#10B981" : "#E11D48" }} />
+                      <span className="font-medium">{m.name}</span>
+                      <span className="text-[9px]" style={{ color: "#94a3b8" }}>{m.provider}</span>
+                    </button>
+                  ))}
+                </div>
+              ) : null;
+            })()}
             {showSlashMenu && (
               <div
-                className="absolute bottom-full left-0 right-0 mb-2 rounded-2xl border shadow-xl overflow-hidden"
-                style={{
-                  border: "1px solid rgba(0,0,0,0.06)",
-                  background: "#ffffff",
-                  maxHeight: "280px",
-                  overflowY: "auto",
-                }}
+                className="absolute bottom-full left-3 right-3 mb-2 rounded-xl border shadow-xl overflow-hidden z-10"
+                style={{ border: "1px solid rgba(0,0,0,0.06)", background: "#ffffff", maxHeight: "200px", overflowY: "auto" }}
               >
-                <div className="px-4 py-2 text-[10px] font-bold uppercase tracking-wider" style={{ color: "#94a3b8" }}>
+                <div className="px-3 py-1.5 text-[9px] font-bold uppercase tracking-wider" style={{ color: "#cbd5e1" }}>
                   Saved Styles
                 </div>
                 {savedStyles.length === 0 ? (
-                  <p className="px-4 py-3 text-xs text-center" style={{ color: "#94a3b8" }}>No saved styles. Open Customize & click Save.</p>
+                  <p className="px-3 py-2 text-[11px] text-center" style={{ color: "#94a3b8" }}>No saved styles yet.</p>
                 ) : (
                   savedStyles.filter((s) => s.name.toLowerCase().includes(slashFilter)).map((style, i) => (
-                    <button key={style.id} className={`w-full flex items-center justify-between px-4 py-2 text-sm transition-colors text-left ${i === slashIndex ? "bg-[#0066cc]/8" : "hover:bg-gray-50"}`} style={{ color: "#001a33" }} onClick={() => { setSlashIndex(-1); applyStyle(style); }} onMouseEnter={() => setSlashIndex(i)}>
-                      <span className="flex items-center gap-2.5">
-                        <span className="w-3 h-3 rounded-full border border-black/5 inline-block shrink-0" style={{ background: style.color }} />
-                        <span className="truncate max-w-[140px]">{style.name}</span>
-                        {style.category && (
-                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md shrink-0 whitespace-nowrap" style={{ background: "rgba(0,102,204,0.08)", color: "#0066cc" }}>
-                            {style.category.replace(/-/g, " ")}
-                          </span>
-                        )}
+                    <button key={style.id} className={`w-full flex items-center justify-between px-3 py-1.5 text-[11px] transition-colors text-left ${i === slashIndex ? "bg-[#0066cc]/8" : "hover:bg-gray-50"}`} style={{ color: "#001a33" }} onClick={() => { setSlashIndex(-1); applyStyle(style); }} onMouseEnter={() => setSlashIndex(i)}>
+                      <span className="flex items-center gap-2">
+                        <span className="w-2.5 h-2.5 rounded-full border border-black/5 inline-block shrink-0" style={{ background: style.color }} />
+                        <span className="truncate max-w-[120px]">{style.name}</span>
                       </span>
-                      <span className="text-[10px] opacity-30 hover:opacity-100 px-1.5 py-0.5 rounded hover:bg-red-50 transition-all" onClick={(e) => { e.stopPropagation(); deleteStyle(style.id); }}>x</span>
+                      <span className="text-[9px] opacity-30 hover:opacity-100 px-1 rounded hover:bg-red-50 transition-all" onClick={(e) => { e.stopPropagation(); deleteStyle(style.id); }}>x</span>
                     </button>
                   ))
                 )}
-
               </div>
             )}
+          </div>
+
+          {/* Textarea + buttons row */}
+          <div className="flex items-end gap-1 px-3 pb-2 pt-1.5">
             <textarea
               ref={inputRef}
               value={prompt}
               onChange={handleInputChange}
               onKeyDown={handleKeyDown}
-              placeholder="Describe what you want to design..."
+              placeholder="Ask MenteE AI anything... (type @ for image generation)"
               rows={1}
-              className="w-full resize-none rounded-full px-3 py-1.5 text-xs focus:outline-none transition-all"
-              style={{
-                background: "transparent",
-                color: "#001a33",
-              }}
+              className="flex-1 resize-none text-[13px] py-1 focus:outline-none transition-all leading-relaxed"
+              style={{ background: "transparent", color: "#001a33" }}
             />
+            <button
+              onClick={toggleVoiceInput}
+              className="rounded-lg p-1.5 transition-all duration-200 shrink-0 hover:bg-gray-100"
+              style={{ color: isListening ? "#E11D48" : "#94a3b8" }}
+              title={isListening ? "Stop voice input" : "Start voice input"}
+            >
+              <MicIcon className={`w-4 h-4 ${isListening ? "animate-pulse" : ""}`} />
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleImageUpload}
+              className="hidden"
+            />
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={!supportsImageInput}
+              className="rounded-lg p-1.5 transition-all duration-200 shrink-0 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-gray-100"
+              style={{ color: inputImage ? "#0066cc" : "#94a3b8" }}
+              title="Upload an image"
+            >
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                <circle cx="8.5" cy="8.5" r="1.5" />
+                <polyline points="21 15 16 10 5 21" />
+              </svg>
+            </button>
+            <button
+              onClick={onGenerate}
+              disabled={isGenerating || !prompt.trim()}
+              className="rounded-lg p-1.5 transition-all duration-200 shrink-0 disabled:opacity-30 hover:bg-gray-100"
+              style={{ color: "#0066cc" }}
+            >
+              {isGenerating ? (
+                <Spinner className="w-4 h-4" />
+              ) : (
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="m5 12 7-7 7 7" />
+                  <path d="M12 19V5" />
+                </svg>
+              )}
+            </button>
           </div>
-          <button
-            onClick={toggleVoiceInput}
-            className="rounded-full p-1.5 transition-all duration-200 shrink-0 hover:shadow-sm"
-            style={{
-              background: isListening
-                ? "linear-gradient(135deg,#E11D48,#FB7185)"
-                : "transparent",
-              color: isListening ? "#fff" : "#0066cc",
-              border: isListening
-                ? "2px solid #E11D48"
-                : "none",
-              boxShadow: isListening ? "0 0 12px rgba(225,29,72,0.4)" : "none",
-            }}
-            title={isListening ? "Stop voice input" : "Start voice input"}
-          >
-            <MicIcon className={`w-4 h-4 ${isListening ? "animate-pulse" : ""}`} />
-          </button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            onChange={handleImageUpload}
-            className="hidden"
-          />
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            disabled={!supportsImageInput}
-            className="rounded-full p-1.5 transition-all duration-200 shrink-0 disabled:opacity-30 disabled:cursor-not-allowed hover:shadow-sm"
-            style={{
-              background: inputImage ? "linear-gradient(135deg, #0066cc, #0099ff)" : "transparent",
-              color: inputImage ? "#fff" : "#0066cc",
-              border: inputImage ? "none" : "none",
-            }}
-            title={supportsImageInput ? "Upload a photo of a person" : "This model doesn't support image input"}
-          >
-            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-              <circle cx="8.5" cy="8.5" r="1.5" />
-              <polyline points="21 15 16 10 5 21" />
-            </svg>
-          </button>
-          <button
-            onClick={onGenerate}
-            disabled={isGenerating || !prompt.trim()}
-            className="inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 font-bold shadow-sm transition-all duration-200 hover:shadow-md hover:scale-[1.02] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100 whitespace-nowrap shrink-0"
-            style={{
-              background: "linear-gradient(135deg, #0066cc 0%, #0099ff 100%)",
-              color: "#ffffff",
-              border: "none",
-              boxShadow: "0 2px 8px rgba(0,102,204,0.25)",
-            }}
-          >
-            {isGenerating ? (
-              <><Spinner className="w-4 h-4" /> Generating</>
-            ) : (
-              <><WandIcon className="w-4 h-4" /> Generate</>
-            )}
-          </button>
         </div>
       </div>
     </div>

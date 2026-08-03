@@ -18,6 +18,14 @@ ai_bp = Blueprint('ai', __name__)
 SUBNP_BASE_URL = "https://subnp.com"
 POLLINATIONS_BASE = "https://image.pollinations.ai/prompt"
 
+GEMINI_IMAGE_MODELS = [
+    'gemini-2.5-flash-image',
+    'gemini-3-pro-image',
+    'gemini-3.1-flash-image',
+    'gemini-3.1-flash-image-preview',
+    'gemini-3-pro-image-preview',
+]
+
 
 def build_dress_prompt(prompt_text, params):
     dress_type = params.get('dress_type', 'dress').replace('-', ' ')
@@ -128,8 +136,11 @@ def list_models():
          'type': 'image', 'requires_key': False, 'key_configured': True, 'supports_image_input': True},
     ]
     api_key = current_app.config.get('GOOGLE_API_KEY')
-    image_models.append({'id': 'gemini-enhanced', 'name': 'Gemini Image', 'provider': 'Google',
-                         'type': 'image', 'requires_key': True, 'key_configured': bool(api_key), 'supports_image_input': True})
+    for gm in GEMINI_IMAGE_MODELS:
+        pretty = gm.replace('gemini-', 'Gemini ').replace('-image', ' Image').replace('-preview', ' (Preview)')
+        image_models.append({'id': f"google-{gm}", 'name': pretty, 'provider': 'Google',
+                             'type': 'image', 'requires_key': True, 'key_configured': bool(api_key),
+                             'supports_image_input': True})
 
     try:
         resp = requests.get(f"{SUBNP_BASE_URL}/api/free/models", timeout=10)
@@ -199,11 +210,12 @@ def generate_image():
             final_prompt = build_dress_prompt(prompt, params)
 
         # Hit the image provider
-        if model == 'gemini-enhanced':
+        if model == 'gemini-enhanced' or model.startswith('google-'):
             api_key = current_app.config.get('GOOGLE_API_KEY')
             if not api_key:
                 return jsonify({'error': 'Google Imagen is not available. GOOGLE_API_KEY is not configured. Please select another model.'}), 503
-            image_bytes, error = fetch_google_imagen(final_prompt, input_image_bytes)
+            preferred = model[len('google-'):] if model.startswith('google-') else None
+            image_bytes, error = fetch_google_imagen(final_prompt, input_image_bytes, preferred_model=preferred)
             if error:
                 return jsonify({'error': f'Google Imagen is not available: {error}. Please select another model.'}), 503
         elif model.startswith('subnp-'):
@@ -259,40 +271,45 @@ def fetch_pollinations_image(prompt, input_image_url=None):
         return None, f'Pollinations failed: {str(e)}'
 
 
-def fetch_google_imagen(prompt, input_image_bytes=None):
+def fetch_google_imagen(prompt, input_image_bytes=None, preferred_model=None):
     api_key = current_app.config.get('GOOGLE_API_KEY')
     if not api_key:
         return None, 'GOOGLE_API_KEY not configured'
 
-    try:
-        from google import genai
-        from google.genai import types
-        client = genai.Client(api_key=api_key)
+    candidates = [m for m in [preferred_model] + GEMINI_IMAGE_MODELS if m]
+    errors = []
 
-        contents = []
-        if input_image_bytes:
-            contents.append(types.Part.from_bytes(
-                data=input_image_bytes,
-                mime_type='image/png',
-            ))
-        contents.append(prompt)
+    from google import genai
+    from google.genai import types
+    client = genai.Client(api_key=api_key)
 
-        response = client.models.generate_content(
-            model='gemini-3.1-flash-lite-image',
-            contents=contents,
-            config={
-                'response_modalities': ['TEXT', 'IMAGE'],
-            }
-        )
+    for model_name in candidates:
+        try:
+            contents = []
+            if input_image_bytes:
+                contents.append(types.Part.from_bytes(
+                    data=input_image_bytes,
+                    mime_type='image/png',
+                ))
+            contents.append(prompt)
 
-        # Extract image from response parts
-        for part in response.candidates[0].content.parts:
-            if hasattr(part, 'inline_data') and part.inline_data:
-                return part.inline_data.data, None
+            response = client.models.generate_content(
+                model=model_name,
+                contents=contents,
+                config={
+                    'response_modalities': ['TEXT', 'IMAGE'],
+                }
+            )
 
-        return None, 'Google Gemini returned no image'
-    except Exception as e:
-        return None, f'Google Gemini failed: {str(e)}'
+            # Extract image from response parts
+            for part in response.candidates[0].content.parts:
+                if hasattr(part, 'inline_data') and part.inline_data:
+                    return part.inline_data.data, None
+            errors.append(f'{model_name}: returned no image')
+        except Exception as e:
+            errors.append(f'{model_name}: {str(e)[:100]}')
+
+    return None, '; '.join(errors) or 'Google Gemini failed'
 
 
 def fetch_subnp_image(prompt, subnp_model='turbo'):
