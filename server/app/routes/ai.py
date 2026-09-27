@@ -19,10 +19,9 @@ SUBNP_BASE_URL = "https://subnp.com"
 POLLINATIONS_BASE = "https://image.pollinations.ai/prompt"
 
 GEMINI_IMAGE_MODELS = [
-    'gemini-2.5-flash-image',
-    'gemini-3-pro-image',
     'gemini-3.1-flash-image',
     'gemini-3.1-flash-image-preview',
+    'gemini-3-pro-image',
     'gemini-3-pro-image-preview',
 ]
 
@@ -109,7 +108,7 @@ Include these details if relevant: color ({color_name}), pattern ({params.get('p
 Keep it concise (under 200 characters). Output ONLY the prompt text, no explanation."""
 
         response = client.models.generate_content(
-            model='gemini-2.0-flash',
+            model='gemini-3.8-flash',
             contents=f"Generate a photorealistic fashion image prompt for: {prompt_text or 'a garment'}",
             config={'system_instruction': system},
         )
@@ -121,13 +120,11 @@ Keep it concise (under 200 characters). Output ONLY the prompt text, no explanat
 @ai_bp.route('/models', methods=['GET'])
 @jwt_required()
 def list_models():
-    # Text generation models (Groq - free)
-    groq_key = current_app.config.get('GROQ_API_KEY')
+    # Text generation models (Gemini)
+    gemini_key = current_app.config.get('GOOGLE_API_KEY')
     text_models = [
-        {'id': 'groq-llama', 'name': 'Llama 3.3 70B', 'provider': 'Groq',
-         'type': 'text', 'requires_key': True, 'key_configured': bool(groq_key)},
-        {'id': 'groq-gemma', 'name': 'Gemma 2 9B', 'provider': 'Groq',
-         'type': 'text', 'requires_key': True, 'key_configured': bool(groq_key)},
+        {'id': 'gemini-3.8-flash', 'name': 'Gemini 3.8 Flash', 'provider': 'Google',
+         'type': 'text', 'requires_key': True, 'key_configured': bool(gemini_key)},
     ]
 
     # Image generation models
@@ -362,17 +359,17 @@ def generate_text():
             return jsonify({'error': 'Missing prompt'}), 400
 
         prompt = data.get('prompt', '')
-        model = data.get('model', 'groq-llama')
+        model = data.get('model', 'gemini-3.8-flash')
         conv_id = data.get('conversation_id')
 
-        groq_key = current_app.config.get('GROQ_API_KEY')
-        if not groq_key:
-            return jsonify({'error': 'Groq API key not configured.'}), 503
+        gemini_key = current_app.config.get('GOOGLE_API_KEY')
+        if not gemini_key:
+            return jsonify({'error': 'Google API key not configured.'}), 503
 
-        import groq
-        client = groq.Groq(api_key=groq_key)
+        from google import genai
+        client = genai.Client(api_key=gemini_key)
 
-        groq_model = 'llama-3.3-70b-versatile' if model == 'groq-llama' else 'gemma2-9b-it'
+        gemini_model = model if model.startswith('gemini-') else 'gemini-3.8-flash'
 
         system_msg = (
             "Your name is MenteE AI. You are a fashion design assistant created by MenteE. "
@@ -382,17 +379,17 @@ def generate_text():
             "Never invent a different name or persona."
         )
 
-        response = client.chat.completions.create(
-            model=groq_model,
-            messages=[
-                {"role": "system", "content": system_msg},
-                {"role": "user", "content": prompt},
-            ],
-            max_tokens=1024,
-            temperature=0.7,
+        response = client.models.generate_content(
+            model=gemini_model,
+            contents=prompt,
+            config={
+                'system_instruction': system_msg,
+                'max_output_tokens': 1024,
+                'temperature': 0.7,
+            },
         )
 
-        reply = response.choices[0].message.content.strip()
+        reply = response.text.strip()
 
         conv = ensure_conversation(account_id, conv_id, prompt)
         add_chat_message(conv.id, 'user', prompt)

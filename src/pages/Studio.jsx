@@ -196,7 +196,7 @@ export default function Studio() {
     reader.onerror = reject;
   });
 
-  const onGenerate = async () => {
+  const onGenerate = async (forceImage = false) => {
     const text = prompt.trim() || params.prompt?.trim() || "Elegant dress";
     if (!text) return;
 
@@ -271,7 +271,7 @@ export default function Studio() {
     }
 
     // Normal flow (no @ mention)
-    if (genMode === "text") {
+    if (genMode === "text" && !forceImage) {
       const textModel = textModels.find((m) => m.key_configured) || textModels[0];
       if (textModel?.requires_key && !textModel?.key_configured) {
         toast.error(`"${textModel.name}" is not available. Please select another model.`);
@@ -302,8 +302,8 @@ export default function Studio() {
         inputImageData = await toBase64(inputImage);
       }
 
-      if (genMode === "text") {
-        const textModelId = (textModels.find((m) => m.key_configured) || textModels[0])?.id || "groq-llama";
+      if (genMode === "text" && !forceImage) {
+        const textModelId = (textModels.find((m) => m.key_configured) || textModels[0])?.id || "gemini-3.8-flash";
         const response = await aiAPI.generateText(text, textModelId, conversationId, inputImageData);
         if (response.text) {
           if (response.conversation_id && !conversationId) setConversationId(response.conversation_id);
@@ -588,7 +588,7 @@ export default function Studio() {
           <CustomizerPanel
             params={params} setParams={setParams}
             onSaveVariant={saveCurrentStyle}
-            isGenerating={isGenerating} onGenerate={onGenerate}
+            isGenerating={isGenerating} onGenerate={() => onGenerate(true)}
             models={models} selectedModel={selectedModel} onModelChange={setSelectedModel}
           />
         </div>
