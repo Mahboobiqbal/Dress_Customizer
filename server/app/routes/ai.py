@@ -361,6 +361,9 @@ def generate_text():
         prompt = data.get('prompt', '')
         model = data.get('model', 'gemini-3.8-flash')
         conv_id = data.get('conversation_id')
+        context = data.get('context', {})
+        conversation_context = context.get('conversation_context', '')
+        ctx_params = context.get('params', {})
 
         gemini_key = current_app.config.get('GOOGLE_API_KEY')
         if not gemini_key:
@@ -379,9 +382,16 @@ def generate_text():
             "Never invent a different name or persona."
         )
 
+        user_content = prompt
+        if conversation_context:
+            user_content = f"Conversation so far:\n{conversation_context}\n\nLatest request: {prompt}"
+        if ctx_params:
+            p = ctx_params
+            user_content += f"\n\nDesign preferences: color={p.get('color', '')}, pattern={p.get('pattern', '')}, neckline={p.get('neckline', '')}, sleeve_length={p.get('sleeveLength', '')}, texture={p.get('texture', '')}, dress_type={p.get('dressType', '')}"
+
         response = client.models.generate_content(
             model=gemini_model,
-            contents=prompt,
+            contents=user_content,
             config={
                 'system_instruction': system_msg,
                 'max_output_tokens': 1024,

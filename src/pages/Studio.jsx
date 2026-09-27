@@ -196,11 +196,26 @@ export default function Studio() {
     reader.onerror = reject;
   });
 
+  const buildContextPrompt = (userText) => {
+    const recent = messages.slice(-10).filter((m) => m.content).map((m) => `${m.sender_role === 'user' ? 'User' : 'Assistant'}: ${m.content}`).join('\n');
+    const p = { ...params };
+    if (userText) p.prompt = userText;
+    return { conversation_context: recent, params: p };
+  };
+
   const onGenerate = async (forceImage = false) => {
     const text = prompt.trim() || params.prompt?.trim() || "Elegant dress";
     if (!text) return;
 
-    // Check for @model:prompt pattern
+    const imageIntentPatterns = [
+      /\b(generate|create|make|show|give me|render|produce|design|draw|photograph|visualize|visualise|picture|image|photo|depict|illustrate)\b.*\b(image|photo|picture|design|dress|outfit|look|render|illustration|depiction|visual)\b/i,
+      /\b(image|photo|picture|design|render|illustration)\s*(of|for|please|plz)?\b/i,
+      /\bshow\s+(me\s+)?(a\s+|the\s+)?(image|photo|picture|design|render|illustration)\b/i,
+      /\bcan\s+you\s+(generate|create|make|show|render|produce|draw)\b/i,
+      /\blet'?s\s+(generate|create|make|render|see|try)\b/i,
+    ];
+    const wantsImage = forceImage || imageIntentPatterns.some((re) => re.test(text));
+
     const mentionMatch = text.match(/^@(.+?):\s*(.+)$/s);
     let forceImageModel = null;
     let actualPrompt = text;
@@ -271,7 +286,7 @@ export default function Studio() {
     }
 
     // Normal flow (no @ mention)
-    if (genMode === "text" && !forceImage) {
+    if (genMode === "text" && !wantsImage) {
       const textModel = textModels.find((m) => m.key_configured) || textModels[0];
       if (textModel?.requires_key && !textModel?.key_configured) {
         toast.error(`"${textModel.name}" is not available. Please select another model.`);
@@ -302,9 +317,9 @@ export default function Studio() {
         inputImageData = await toBase64(inputImage);
       }
 
-      if (genMode === "text" && !forceImage) {
+      if (genMode === "text" && !wantsImage) {
         const textModelId = (textModels.find((m) => m.key_configured) || textModels[0])?.id || "gemini-3.8-flash";
-        const response = await aiAPI.generateText(text, textModelId, conversationId, inputImageData);
+        const response = await aiAPI.generateText(text, textModelId, conversationId, inputImageData, buildContextPrompt(text));
         if (response.text) {
           if (response.conversation_id && !conversationId) setConversationId(response.conversation_id);
           const aiMsg = {
@@ -500,12 +515,22 @@ export default function Studio() {
     }
   };
 
-  const downloadImage = (url) => {
+  const downloadImage = async (url) => {
     if (!url) return;
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `design-${Date.now()}.png`;
-    a.click();
+    try {
+      const res = await fetch(url);
+      const blob = await res.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = blobUrl;
+      a.download = `design-${Date.now()}.png`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(blobUrl);
+    } catch {
+      window.open(url, "_blank");
+    }
   };
 
   const handleImageUpload = (e) => {
